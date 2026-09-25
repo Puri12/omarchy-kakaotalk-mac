@@ -1,0 +1,19 @@
+Windows Registry Editor Version 5.00
+
+[HKEY_LOCAL_MACHINE\System\CurrentControlSet\Control\Nls\Language]
+"Default"="0412"
+"InstallLanguage"="0412"
+
+[HKEY_CURRENT_USER\Control Panel\Desktop]
+"PreferredUILanguages"=hex(7):6b,6f,2d,4b,52,00,00
+
+[HKEY_LOCAL_MACHINE\Software\Microsoft\Windows NT\CurrentVersion\FontSubstitutes]
+"MS Shell Dlg"="Noto Sans CJK KR"
+"MS Shell Dlg 2"="Noto Sans CJK KR"
+"Gulim"="Noto Sans CJK KR"
+"GulimChe"="Noto Sans CJK KR"
+"Dotum"="Noto Sans CJK KR"
+"DotumChe"="Noto Sans CJK KR"
+"Batang"="Noto Sans CJK KR"
+"BatangChe"="Noto Sans CJK KR"
+"Malgun Gothic"="Noto Sans CJK KR"

@@ -1,0 +1,24 @@
+#!/usr/bin/env bash
+# KakaoTalk on Apple Silicon (Asahi, 16K pages): ARM64EC Wine 11.18 from Fedora COPR lacamar/wine-arm64ec
+# plus FEX's wow64 DLL, running natively (no muvm). Uses the 32-bit client: the 64-bit one dies in its
+# Themida-protected Vox.dll here.
+#   kakaotalk              launch KakaoTalk
+#   kakaotalk wine ARGS    run this prefix's wine with ARGS (e.g. `kakaotalk wine regedit`)
+#   kakaotalk kill         stop this prefix's wineserver
+set -euo pipefail
+
+root="$HOME/.local/share/kakaotalk-ec/root"
+export PATH="$root/usr/bin:$PATH" WINEPREFIX="$HOME/.local/share/kakaotalk-ec/prefix"
+export WINEDEBUG="${KAKAO_WINEDEBUG:--all}" HODLL=libwow64fex.dll
+export WINEDLLOVERRIDES='winebth.sys=;winemenubuilder.exe=' XMODIFIERS='@im=fcitx'
+exe="$WINEPREFIX/drive_c/Program Files (x86)/Kakao/KakaoTalk/KakaoTalk.exe"
+
+case "${1:-}" in
+  wine) shift; exec wine "$@" ;;
+  kill) exec wineserver -k ;;
+  "")
+    [[ -f "$exe" ]] || { echo "KakaoTalk not installed: $exe" >&2; exit 1; }
+    cd "$(dirname "$exe")"
+    exec wine "$exe" ;;
+  *) echo "usage: kakaotalk [wine ARGS|kill]" >&2; exit 2 ;;
+esac

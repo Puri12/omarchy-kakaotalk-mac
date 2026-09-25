@@ -1,0 +1,118 @@
+#!/usr/bin/env python3
+"""Let KakaoTalk (Wine) paste clipboard images such as Omarchy screenshots.
+
+Wine ignores image/png from the X clipboard, and pushing a screenshot through Hyprland's
+XWayland clipboard bridge as image/bmp (~20 MB) hangs the paste and breaks the XWM until
+relogin. So while a KakaoTalk window is focused, a PNG-only clipboard is converted to BMP and
+put on the *Windows* clipboard from inside the Wine prefix (setclip.py), where KakaoTalk reads
+it without any X transfer. Hyprland mirrors Wine's clipboard back to Wayland as image/bmp, so
+the original PNG is restored as soon as focus leaves KakaoTalk, before a Wayland app can pull
+the large bitmap through XWayland.
+"""
+import os
+import select
+import socket
+import subprocess
+import sys
+
+KAKAO_CLASS = "kakaotalk.exe"
+CLIP_DIR = os.path.join(os.environ.get("XDG_RUNTIME_DIR", "/tmp"), "kakaotalk-clip")
+KAKAOTALK = os.path.expanduser("~/.local/bin/kakaotalk")
+PY_DIR = os.path.expanduser("~/.local/share/kakaotalk-ec/py")
+TEXT_TYPES = ("text/plain", "UTF8_STRING", "STRING", "TEXT")
+
+
+def log(msg):
+    print(f"kakaotalk-clipbridge: {msg}", file=sys.stderr, flush=True)
+
+
+def paste(*args):
+    return subprocess.run(["wl-paste", *args], capture_output=True, timeout=10).stdout
+
+
+def copy(mime, data):
+    subprocess.run(["wl-copy", "--type", mime], input=data, check=True, timeout=10,
+                   stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+
+
+def types():
+    return paste("--list-types").decode(errors="replace").split()
+
+
+def set_windows_clipboard(png):
+    os.makedirs(CLIP_DIR, exist_ok=True)
+    bmp = os.path.join(CLIP_DIR, "clip.bmp")
+    subprocess.run(["magick", "png:-", "-background", "white", "-alpha", "remove", "-alpha", "off",
+                    f"bmp3:{bmp}"], input=png, check=True, timeout=30)
+    subprocess.run([KAKAOTALK, "wine", f"Z:{PY_DIR}/python.exe", f"Z:{PY_DIR}/setclip.py", f"Z:{bmp}"],
+                   check=True, timeout=60, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+
+
+class Bridge:
+    def __init__(self):
+        self.saved_png = None
+
+    def kakao_focused(self):
+        if types() != ["image/png"]:
+            return
+        png = paste("--no-newline", "--type", "image/png")
+        if not png:
+            return
+        try:
+            set_windows_clipboard(png)
+        except (subprocess.CalledProcessError, subprocess.TimeoutExpired) as exc:
+            log(f"setting the Windows clipboard failed: {exc}")
+            return
+        self.saved_png = png
+        log(f"KakaoTalk focused: image ({len(png)} bytes PNG) put on the Windows clipboard")
+
+    def kakao_unfocused(self):
+        if self.saved_png is None:
+            return
+        current = types()
+        # Still the bitmap Wine mirrored back (not something copied inside KakaoTalk since).
+        if "image/bmp" in current and not any(t in current for t in TEXT_TYPES):
+            copy("image/png", self.saved_png)
+            log("KakaoTalk unfocused: PNG restored")
+        self.saved_png = None
+
+    def run(self):
+        sock_path = os.path.join(os.environ["XDG_RUNTIME_DIR"], "hypr",
+                                 os.environ["HYPRLAND_INSTANCE_SIGNATURE"], ".socket2.sock")
+        sock = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
+        sock.connect(sock_path)
+        # Screenshots taken while KakaoTalk is focused change the clipboard without any focus
+        # event (the region picker is a layer surface), so watch the clipboard as well.
+        watch = subprocess.Popen(["wl-paste", "--watch", "echo", "changed"], stdout=subprocess.PIPE)
+        active = subprocess.run(["hyprctl", "activewindow", "-j"], capture_output=True, text=True).stdout
+        in_kakao = f'"class": "{KAKAO_CLASS}"' in active
+        if in_kakao:
+            self.kakao_focused()
+        log("listening for focus and clipboard changes")
+        buf = b""
+        while True:
+            ready, _, _ = select.select([sock, watch.stdout], [], [])
+            if watch.stdout in ready:
+                if not os.read(watch.stdout.fileno(), 4096):
+                    raise SystemExit("wl-paste --watch exited")
+                if in_kakao:
+                    self.kakao_focused()
+            if sock in ready:
+                chunk = sock.recv(65536)
+                if not chunk:
+                    raise SystemExit("Hyprland event socket closed")
+                *lines, buf = (buf + chunk).split(b"\n")
+                for line in lines:
+                    event, _, payload = line.decode(errors="replace").partition(">>")
+                    if event != "activewindow":
+                        continue
+                    now_kakao = payload.split(",", 1)[0] == KAKAO_CLASS
+                    if now_kakao and not in_kakao:
+                        self.kakao_focused()
+                    elif in_kakao and not now_kakao:
+                        self.kakao_unfocused()
+                    in_kakao = now_kakao
+
+
+if __name__ == "__main__":
+    Bridge().run()

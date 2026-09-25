@@ -1,0 +1,10 @@
+[Desktop Entry]
+Type=Application
+Name=KakaoTalk
+Name[ko]=카카오톡
+Comment=KakaoTalk (ARM64EC Wine)
+Exec=/home/puri/.local/bin/kakaotalk
+Icon=/home/puri/.local/share/icons/kakaotalk.png
+Terminal=false
+Categories=Network;InstantMessaging;
+StartupWMClass=kakaotalk.exe
