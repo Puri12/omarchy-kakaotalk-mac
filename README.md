@@ -37,6 +37,8 @@ config/hypr/autostart-kakaotalk.lua  자동 시작 → ~/.config/hypr/autostart.
 config/fcitx5/xim.conf               On-The-Spot 한글 조합 → ~/.config/fcitx5/conf/
 config/omarchy/shell-tray-entry.json 바 트레이에 아이콘 고정 → ~/.config/omarchy/shell.json의 omarchy.tray 항목
 config/applications/kakaotalk.desktop 앱 메뉴 항목 → ~/.local/share/applications/
+docs/clipboard-paste.md     스크린샷 붙여넣기 원리, 실패한 방식, 확인과 복구 방법
+tools/clipboard-selftest.sh 붙여넣기 브리지 자동 점검 (작은 이미지로 안전하게)
 ```
 
 실행에 필요한 경로:
@@ -159,6 +161,8 @@ fcitx5의 기본값(`UseOnTheSpot=False`)에서는 X11 앱에서 조합 중인 �
 - 카카오톡 창에 포커스가 있으면(카톡을 보는 중에 찍은 스크린샷 포함), 브리지가 PNG를 BMP로 바꾸고 **Wine 안에서 Windows 클립보드(`CF_DIB`)에 직접 넣는다.** 3450×2224 스크린샷 기준 약 0.3초 걸린다.
 - 카톡은 Wine 안에서 바로 읽으므로 큰 데이터가 XWayland를 거치지 않는다.
 - Hyprland가 Wine 클립보드를 Wayland 쪽에 `image/bmp`로 복사해 오므로, **카톡에서 벗어나면 원래 PNG로 즉시 되돌린다.**
+
+자세한 내용은 [docs/clipboard-paste.md](docs/clipboard-paste.md)에 있다. 동작 확인은 `tools/clipboard-selftest.sh`로 한다.
 
 ⚠️ **하지 말 것**
 

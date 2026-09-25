@@ -14,6 +14,7 @@ import select
 import socket
 import subprocess
 import sys
+import time
 
 KAKAO_CLASS = "kakaotalk.exe"
 CLIP_DIR = os.path.join(os.environ.get("XDG_RUNTIME_DIR", "/tmp"), "kakaotalk-clip")
@@ -23,7 +24,7 @@ TEXT_TYPES = ("text/plain", "UTF8_STRING", "STRING", "TEXT")
 
 
 def log(msg):
-    print(f"kakaotalk-clipbridge: {msg}", file=sys.stderr, flush=True)
+    print(f"{time.strftime('%H:%M:%S')} kakaotalk-clipbridge: {msg}", file=sys.stderr, flush=True)
 
 
 def paste(*args):
