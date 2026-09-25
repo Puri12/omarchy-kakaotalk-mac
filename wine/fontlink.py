@@ -1,3 +1,5 @@
+# SPDX-License-Identifier: GPL-3.0-or-later
+# Adapted from link_fallback_fonts in https://github.com/chaotic-ground/kakaotalk-on-wine
 import sys
 
 

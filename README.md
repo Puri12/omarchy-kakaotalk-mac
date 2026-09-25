@@ -139,6 +139,8 @@ hyprctl reload && hyprctl configerrors
 
 `~/.config/omarchy/shell.json`의 `{"id": "omarchy.tray"}` 항목을 `config/omarchy/shell-tray-entry.json` 내용으로 바꾼다. 그다음 `omarchy restart shell`을 실행한다.
 
+`.desktop`의 `Exec=kakaotalk`은 `~/.local/bin`이 세션 `PATH`에 있다고 가정한다(Omarchy 기본값). `Icon=kakaotalk`은 `~/.local/share/icons/kakaotalk.png`로 찾아진다.
+
 ---
 
 ## 구성 요소 설명
@@ -203,3 +205,7 @@ fcitx5의 기본값(`UseOnTheSpot=False`)에서는 X11 앱에서 조합 중인 �
 - 64비트 클라이언트(`KakaoTalkUI.exe`)는 사용할 수 없다 (Themida).
 - 통화, 파일 전송 전반, 알림은 충분히 검증하지 않았다.
 - 바 아이콘에는 안 읽은 메시지 표시가 없다.
+
+## 라이선스
+
+이 저장소의 스크립트와 문서는 MIT([LICENSE](LICENSE))로 배포된다. 예외로 `wine/fontlink.py`는 [chaotic-ground/kakaotalk-on-wine](https://github.com/chaotic-ground/kakaotalk-on-wine)의 `link_fallback_fonts`를 고친 것이라 원본을 따라 **GPL-3.0-or-later**다. `wine/korean.reg`의 한국어 UI 레지스트리 값도 같은 저장소의 설명을 참고했다. winebth 차단과 빈 창 숨김 규칙 같은 일부 설정은 [minpeter/omarchy-kakaotalk](https://github.com/minpeter/omarchy-kakaotalk)을 참고했다. 카카오톡은 Kakao Corp.의 제품이며, 이 저장소에는 카카오 소프트웨어가 포함되어 있지 않다.
