@@ -1,0 +1,230 @@
+#!/usr/bin/env python3
+"""Route KakaoTalk's new-message popups to desktop notifications titled with the room name.
+
+KakaoTalk's own popup (an untitled layered window that opens at the bottom edge of the screen,
+plus its "KakaoTalkShadowWnd") is moved to a hidden special workspace as soon as Hyprland maps
+it, and a notification titled with the room name says "새 메시지" (no message text); clicking it
+shows KakaoTalk. KakaoTalk only shows popups for rooms whose notifications are on, so its own
+per-room mute setting applies.
+
+The room name comes from the launcher: it runs KakaoTalk with Wine's +text trace and pipes
+stderr through `kakaotalk-notify relay LOG`, which picks the popup's room name out of the
+DrawTextExW calls, sends only that to $XDG_RUNTIME_DIR/kakaotalk-notify/room.sock and drops
+every other trace line (other stderr lines go to LOG). Without it the title is "카카오톡".
+
+Usage: kakaotalk-notify             (started by Hyprland autostart; see docs/notifications.md)
+       kakaotalk-notify relay LOG   (stderr filter used by the kakaotalk launcher)
+
+Testing override:
+  NOTIFY_CMD  command prefix; headline and body are appended
+"""
+import json
+import os
+import re
+import shlex
+import socket
+import subprocess
+import sys
+import threading
+import time
+
+ICON = os.path.expanduser("~/.local/share/icons/kakaotalk.png")
+HEADLINE = "카카오톡"
+BODY = "새 메시지"
+KAKAO_CLASS = "kakaotalk.exe"
+
+
+def log(msg):
+    print(f"kakaotalk-notify: {msg}", file=sys.stderr, flush=True)
+
+
+RUNTIME = os.path.join(os.environ.get("XDG_RUNTIME_DIR", "/tmp"), "kakaotalk-notify")
+ROOM_SOCK = os.path.join(RUNTIME, "room.sock")
+HIDDEN_WS = "special:katokpopup"
+ROOM_WAIT = 3.0  # seconds after a popup opens to wait for its room name before notifying without one
+ROOM_EARLY = 2.0  # seconds a room name drawn before Hyprland reports its popup is kept
+
+# Wine's +text trace of DrawTextExW: the string (debugstr escapes) and its rectangle.
+DRAW = re.compile(r':trace:text:DrawTextExW L"(.*)", -?\d+, \[\((-?\d+),(-?\d+)\)-')
+ESCAPE = re.compile(r"\\(x[0-9a-fA-F]{2}|[0-9a-fA-F]{4}|.)")
+SEND = "전송"  # the popup's reply button, drawn last
+
+
+def unescape(s):
+    def one(m):
+        e = m.group(1)
+        if len(e) == 4 or e[0] == "x":
+            return chr(int(e.lstrip("x"), 16))
+        return {"n": "\n", "r": "\r", "t": "\t"}.get(e, e)
+    return ESCAPE.sub(one, s)
+
+
+def popup_room(draws):
+    """Room name of a popup whose drawing just ended with SEND, or None.
+
+    A popup draws the room name at its top-left corner, then sender and message in one column
+    (plus "..." when cut), then SEND. Only the room name leaves this function.
+    """
+    for i in range(len(draws) - 2, max(len(draws) - 8, -1), -1):
+        text, x, y = draws[i]
+        if x == 0 and 0 <= y <= 4:
+            column = {dx for _, dx, _ in draws[i + 1:-1]}
+            return text if text and len(column) == 1 and column != {0} else None
+    return None
+
+
+def relay(log_path):
+    """Stderr filter for the launcher: popup room names go to ROOM_SOCK, other lines to the log.
+
+    Wine's text trace carries everything KakaoTalk draws, so it is never written anywhere.
+    """
+    sock = socket.socket(socket.AF_UNIX, socket.SOCK_DGRAM)
+    sock.setblocking(False)
+    draws = []
+    with open(log_path, "ab", buffering=0) as out:
+        for raw in sys.stdin.buffer:
+            if b":trace:text:" not in raw:
+                out.write(raw)
+                continue
+            m = DRAW.search(raw.decode("utf-8", "replace"))
+            if not m:
+                continue
+            draws = draws[-7:] + [(unescape(m.group(1)), int(m.group(2)), int(m.group(3)))]
+            room = popup_room(draws) if draws[-1][0] == SEND else None
+            if room:
+                try:
+                    sock.sendto(room.encode(), ROOM_SOCK)
+                except OSError:
+                    pass  # notifier not running
+
+
+def hyprctl(*args):
+    return subprocess.run(["hyprctl", *args], capture_output=True, text=True, timeout=5).stdout
+
+
+def client(address):
+    try:
+        return next((c for c in json.loads(hyprctl("clients", "-j")) if c["address"] == address), None)
+    except (ValueError, subprocess.SubprocessError) as e:
+        log(f"hyprctl clients failed: {e}")
+        return None
+
+
+def opens_at_bottom(c):
+    """KakaoTalk's popup is mapped at the monitor's bottom edge before it slides into place."""
+    try:
+        m = next(m for m in json.loads(hyprctl("monitors", "-j")) if m["id"] == c["monitor"])
+    except (StopIteration, ValueError, subprocess.SubprocessError):
+        return False
+    return c["at"][1] >= m["y"] + round(m["height"] / m["scale"]) - 8
+
+
+def hide(address):
+    target = f"address:{address}"
+    hyprctl("dispatch", f'hl.dsp.window.pin({{ action = "disable", window = "{target}" }})')
+    hyprctl("dispatch", f'hl.dsp.window.move({{ workspace = "{HIDDEN_WS}", window = "{target}", follow = false }})')
+
+
+def notify_room(room):
+    argv = ["omarchy", "notification", "send", "--app-name", HEADLINE, "-i", ICON,
+            room or HEADLINE, BODY, "--exec", "kakaotalk"]
+    cmd = os.environ.get("NOTIFY_CMD")
+    if cmd:
+        argv = shlex.split(cmd) + [room or HEADLINE, BODY]
+    log(f"popup: notified ({'room' if room else 'no room name'})")
+    try:
+        subprocess.run(argv, stdout=subprocess.DEVNULL)
+    except OSError as e:
+        log(f"notification failed: {e}")
+
+
+class Popups:
+    """Pairs each opened popup with the room name drawn in it, whichever arrives first. Repaints
+    draw a room name again with no popup opening, so an unpaired name expires after ROOM_EARLY."""
+
+    def __init__(self):
+        self.lock = threading.Lock()
+        self.waiting = []  # ids of popups opened but not yet notified, oldest first
+        self.early = []  # (monotonic time, room name) drawn with no popup waiting
+        self.next_id = 0
+
+    def opened(self):
+        with self.lock:
+            now = time.monotonic()
+            self.early = [(t, n) for t, n in self.early if now - t < ROOM_EARLY]
+            if self.early:
+                name = self.early.pop(0)[1]
+            else:
+                name = None
+                pid = self.next_id
+                self.next_id += 1
+                self.waiting.append(pid)
+        if name is not None:
+            notify_room(name)
+        else:
+            threading.Timer(ROOM_WAIT, self.timeout, args=(pid,)).start()
+
+    def timeout(self, pid):
+        with self.lock:
+            if pid not in self.waiting:
+                return
+            self.waiting.remove(pid)
+        notify_room("")
+
+    def room(self, name):
+        with self.lock:
+            if not self.waiting:
+                self.early.append((time.monotonic(), name))
+                return
+            self.waiting.pop(0)
+        notify_room(name)
+
+
+def listen_rooms(popups):
+    os.makedirs(RUNTIME, mode=0o700, exist_ok=True)
+    if os.path.exists(ROOM_SOCK):
+        os.remove(ROOM_SOCK)
+    sock = socket.socket(socket.AF_UNIX, socket.SOCK_DGRAM)
+    sock.bind(ROOM_SOCK)
+    while True:
+        name = sock.recv(4096).decode("utf-8", "replace")
+        threading.Thread(target=popups.room, args=(name,), daemon=True).start()
+
+
+def main_popup():
+    popups = Popups()
+    threading.Thread(target=listen_rooms, args=(popups,), daemon=True).start()
+    path = f'{os.environ["XDG_RUNTIME_DIR"]}/hypr/{os.environ["HYPRLAND_INSTANCE_SIGNATURE"]}/.socket2.sock'
+    sock = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
+    sock.connect(path)
+    buf = b""
+    while chunk := sock.recv(65536):
+        *lines, buf = (buf + chunk).split(b"\n")
+        for line in lines:
+            event, _, data = line.decode(errors="replace").partition(">>")
+            if event != "openwindow":
+                continue
+            addr, _ws, cls, title = (data.split(",", 3) + ["", "", "", ""])[:4]
+            if cls != KAKAO_CLASS or title not in ("", "KakaoTalkShadowWnd"):
+                continue
+            address = "0x" + addr
+            if title == "KakaoTalkShadowWnd":
+                hide(address)
+                continue
+            c = client(address)
+            if not c or not opens_at_bottom(c):
+                continue  # menus and tooltips are untitled too
+            hide(address)
+            popups.opened()
+    raise SystemExit("Hyprland event socket closed")
+
+
+def main():
+    if sys.argv[1:2] == ["relay"]:
+        relay(sys.argv[2])
+    else:
+        main_popup()
+
+
+if __name__ == "__main__":
+    main()

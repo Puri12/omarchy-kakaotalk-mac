@@ -1,0 +1,4 @@
+User-agent: *
+Allow: /
+
+Sitemap: https://puri12.github.io/omarchy-kakaotalk-mac/sitemap.xml

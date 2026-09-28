@@ -1,0 +1,103 @@
+From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
+From: Your Name <you@example.com>
+Date: Mon, 28 Sep 2026 00:00:00 +0000
+Subject: [PATCH] riched20: Rewrap marked paragraphs before computing caret coordinates.
+
+ITextRange::SetText() inserts text through the editor without rewrapping
+the affected paragraph, which stays marked with MEPF_REWRAP. A following
+ITextRange::Select() (set_selection -> update_caret -> cursor_coords),
+EM_SETSEL, or WM_SETFOCUS on a focused control then reaches
+cursor_coords() and fails the assertion on MEPF_REWRAP, which aborts
+the process.
+
+Rewrap the marked paragraphs in cursor_coords() instead of asserting,
+and reload the cursor run afterwards since wrapping can change it.
+
+Wine-Bug: https://bugs.winehq.org/show_bug.cgi?id=40690
+Wine-Bug: https://bugs.winehq.org/show_bug.cgi?id=39342
+---
+ dlls/riched20/caret.c         |  9 ++++++++-
+ dlls/riched20/tests/richole.c | 43 +++++++++++++++++++++++++++++++++++++++++++
+ 2 files changed, 51 insertions(+), 1 deletion(-)
+diff --git a/dlls/riched20/caret.c b/dlls/riched20/caret.c
+index 9b94bcb..1e52239 100644
+--- a/dlls/riched20/caret.c
++++ b/dlls/riched20/caret.c
+@@ -229,7 +229,14 @@ void cursor_coords( ME_TextEditor *editor, ME_Cursor *cursor,
+   int run_x;
+   HDC hdc = ITextHost_TxGetDC( editor->texthost );
+ 
+-  assert(~para->nFlags & MEPF_REWRAP);
++  /* ITextRange::SetText() inserts text without rewrapping, so a following
++   * Select(), EM_SETSEL or WM_SETFOCUS can get here with a marked paragraph. */
++  if (para->nFlags & MEPF_REWRAP)
++  {
++    wrap_marked_paras_dc( editor, hdc, FALSE );
++    run = cursor->run;
++    size_run = run;
++  }
+ 
+   row = row_from_cursor( cursor );
+ 
+diff --git a/dlls/riched20/tests/richole.c b/dlls/riched20/tests/richole.c
+index fb5177b..ce8ad0e 100644
+--- a/dlls/riched20/tests/richole.c
++++ b/dlls/riched20/tests/richole.c
+@@ -5565,6 +5565,48 @@ static void test_freeze(void)
+   release_interfaces(&hwnd, &reole, &doc, &selection);
+ }
+ 
++static void test_Select_after_SetText(void)
++{
++  IRichEditOle *reole = NULL;
++  ITextDocument *doc = NULL;
++  ITextSelection *selection = NULL;
++  ITextRange *range = NULL;
++  LONG start, end;
++  HRESULT hr;
++  HWND hwnd;
++  BSTR str;
++
++  create_interfaces(&hwnd, &reole, &doc, &selection);
++  SetFocus(hwnd);
++  SendMessageA(hwnd, WM_SETFOCUS, 0, 0);
++
++  hr = ITextDocument_Range(doc, 0, 0, &range);
++  ok(hr == S_OK, "got %#lx.\n", hr);
++
++  str = SysAllocString(L"abc");
++  hr = ITextRange_SetText(range, str);
++  ok(hr == S_OK, "got %#lx.\n", hr);
++  SysFreeString(str);
++
++  hr = ITextRange_Collapse(range, tomEnd);
++  ok(hr == S_OK, "got %#lx.\n", hr);
++
++  /* The inserted paragraph has not been rewrapped yet; this used to hit an
++   * assertion in cursor_coords(). */
++  hr = ITextRange_Select(range);
++  ok(hr == S_OK, "got %#lx.\n", hr);
++
++  start = end = -1;
++  hr = ITextSelection_GetStart(selection, &start);
++  ok(hr == S_OK, "got %#lx.\n", hr);
++  hr = ITextSelection_GetEnd(selection, &end);
++  ok(hr == S_OK, "got %#lx.\n", hr);
++  ok(start == 3 && end == 3, "got %ld-%ld.\n", start, end);
++
++  ITextRange_Release(range);
++  release_interfaces(&hwnd, &reole, &doc, &selection);
++}
++
+ START_TEST(richole)
+ {
+   /* Must explicitly LoadLibrary(). The test has no references to functions in
+@@ -5609,4 +5651,5 @@ START_TEST(richole)
+   test_undo();
+   test_undo_control();
+   test_freeze();
++  test_Select_after_SetText();
+ }
+-- 
+2.47.0
+

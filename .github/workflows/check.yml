@@ -1,0 +1,44 @@
+name: Check repository
+
+on: [push, pull_request]
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install check tools
+        run: |
+          sudo apt-get update
+          sudo apt-get install --yes lua5.4 shellcheck
+      - name: Check shell scripts
+        run: |
+          mapfile -t scripts < <(
+            for file in bin/* tools/*; do
+              [[ -f "$file" ]] || continue
+              IFS= read -r first_line < "$file" || true
+              [[ "$first_line" =~ ^\#!.*(/|[[:space:]])(bash|sh)([[:space:]]|$) ]] && printf '%s\n' "$file"
+            done
+            [[ ! -f install.sh ]] || printf '%s\n' install.sh
+          )
+          if ((${#scripts[@]})); then
+            bash -n "${scripts[@]}"
+            shellcheck -S error "${scripts[@]}"
+          fi
+      - name: Compile Python files
+        run: |
+          mapfile -t files < <(
+            for file in bin/*; do
+              [[ -f "$file" ]] || continue
+              IFS= read -r first_line < "$file" || true
+              [[ "$first_line" =~ ^\#!.*python ]] && printf '%s\n' "$file"
+            done
+            find wine tools -type f -name '*.py' -print 2>/dev/null || true
+          )
+          if ((${#files[@]})); then
+            python3 -m py_compile "${files[@]}"
+          fi
+      - name: Check Hyprland Lua configs
+        run: luac5.4 -p config/hypr/*.lua
+      - name: Check site links
+        run: python3 tools/check-site-links.py

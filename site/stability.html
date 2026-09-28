@@ -4,11 +4,11 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>안정성 · omarchy-kakaotalk-mac</title>
-<meta name="description" content="카카오톡이 스스로 종료되는 Wine riched20 문제의 원인과 패치, 타이핑 중 트랙패드 탭 막기, 한글 입력 설정.">
+<meta name="description" content="카카오톡이 스스로 종료되는 Wine riched20 문제의 원인과 패치, 타이핑 중 트랙패드 탭 막기, 한글 입력 설정, 새 메시지 알림.">
 <link rel="canonical" href="https://puri12.github.io/omarchy-kakaotalk-mac/stability.html">
 <meta property="og:type" content="website">
 <meta property="og:title" content="안정성 · omarchy-kakaotalk-mac">
-<meta property="og:description" content="카카오톡이 스스로 종료되는 Wine riched20 문제의 원인과 패치, 타이핑 중 트랙패드 탭 막기, 한글 입력 설정.">
+<meta property="og:description" content="카카오톡이 스스로 종료되는 Wine riched20 문제의 원인과 패치, 타이핑 중 트랙패드 탭 막기, 한글 입력 설정, 새 메시지 알림.">
 <meta property="og:url" content="https://puri12.github.io/omarchy-kakaotalk-mac/stability.html">
 <meta name="twitter:card" content="summary">
 <meta name="theme-color" content="#f6f5f4">
@@ -39,7 +39,7 @@
   </div>
 </header>
 
-<section class="page-head"><div class="shell"><p class="overline">안정성</p><h1>꺼지지 않고, 튀지 않게</h1><p class="lead">카톡이 스스로 종료되는 문제와 타이핑 중 손바닥 탭 문제를 고친 방법, 한글 입력 설정을 정리했습니다.</p></div></section>
+<section class="page-head"><div class="shell"><p class="overline">안정성</p><h1>꺼지지 않고, 튀지 않게</h1><p class="lead">카톡이 스스로 종료되는 문제와 타이핑 중 손바닥 탭 문제를 고친 방법, 한글 입력 설정, 새 메시지 알림을 정리했습니다.</p></div></section>
 <div class="shell">
   <div class="doc">
     <main id="main">
@@ -62,6 +62,7 @@
 tools/riched20-selftest.sh   # PASS
 ~/.local/bin/kakaotalk kill &amp;&amp; kakaotalk
 # 되돌리기: tools/build-riched20.sh --restore</code></pre></figure>
+<p>Wine RPM을 다시 풀면 기본 <code>riched20.dll</code>이 돌아옵니다. 카톡을 실행할 때마다 함께 실행되는 <code>kakaotalk check</code>가 패치본을 빌드한 Wine 버전과 설치된 버전이 같으면 보관해 둔 패치본을 다시 넣고, 다르면 <code>tools/build-riched20.sh</code>를 다시 실행하라는 경고를 로그에 남깁니다.</p>
 <p class="note">Windows 7 원본 <code>msftedit.dll</code>로 바꾸는 방법은 재현 테스트는 통과했지만 카톡이 시작 직후 종료해서 쓸 수 없었습니다. 자세히: <a href="https://github.com/Puri12/omarchy-kakaotalk-mac/blob/main/docs/riched20-crash.md">docs/riched20-crash.md</a></p>
 </section><section class="section reveal" id="trackpad" aria-labelledby="trackpad-h">
 <p class="overline">트랙패드</p>
@@ -70,16 +71,16 @@ tools/riched20-selftest.sh   # PASS
 <ul class="plain">
 <li>카톡 창에 포커스가 있을 때 키가 눌리면 탭 클릭을 끄고, 마지막 입력 0.7초 뒤 다시 켭니다(Hyprland Lua <code>input.keyboard.key</code>).</li>
 <li>물리 클릭은 계속 되고, 다른 앱에서는 설정을 바꾸지 않습니다.</li>
-<li>탭 클릭을 끈 채(Omarchy 기본값) 쓴다면 이 부분을 빼야 합니다. 0.7초 뒤 켜기 때문입니다.</li>
+<li>사용자의 <code>tap_to_click</code>이 켜져 있을 때만 잠시 끄고, 끝나면 원래 값으로 되돌립니다. 탭 클릭을 끈 채(Omarchy 기본값) 쓰면 설정을 건드리지 않으므로 이 부분을 뺄 필요가 없습니다.</li>
 </ul>
-<figure class="code"><figcaption>bash</figcaption><pre tabindex="0"><code>hyprctl getoption input:touchpad:tap-to-click   # 카톡에서 입력 중 false, 멈추면 true</code></pre></figure>
+<figure class="code"><figcaption>bash</figcaption><pre tabindex="0"><code>hyprctl getoption input:touchpad:tap-to-click   # 탭 클릭을 켰다면 카톡에서 입력 중 false, 멈추면 true</code></pre></figure>
 <p class="note">자세히: <a href="https://github.com/Puri12/omarchy-kakaotalk-mac/blob/main/docs/trackpad-typing.md">docs/trackpad-typing.md</a></p>
 </section><section class="section reveal" id="hangul" aria-labelledby="hangul-h">
 <p class="overline">한글</p>
 <h2 id="hangul-h">한글 입력과 글꼴</h2>
 <div class="cards">
 <article class="card"><h3>On-The-Spot 조합</h3><p class="files">config/fcitx5/xim.conf</p><p>fcitx5 기본값에서는 조합 중인 한글이 아래쪽 별도 네모에 보였다가 늦게 입력됩니다. <code>UseOnTheSpot=True</code>로 입력창 안에 바로 표시합니다.</p></article>
-<article class="card"><h3>한글 네모 방지</h3><p class="files">wine/fontlink.py</p><p>입력창 글꼴에 한글이 없으면 네모로 보입니다. 21개 글꼴에 Noto Sans CJK KR SystemLink를 겁니다.</p></article>
+<article class="card"><h3>한글 네모 방지</h3><p class="files">wine/fontlink.py</p><p>입력창 글꼴에 한글이 없으면 네모로 보입니다. 21개 글꼴에 Noto Sans CJK KR SystemLink를 겁니다. 이모지·기호(✔ ❤ ⭐ ⠀)는 흑백 Noto Emoji와 Noto Sans Symbols로 대신 그립니다. 😀 같은 U+1F000 이상 이모지는 Wine 한계로 아직 네모로 보입니다.</p></article>
 </div>
 </section><section class="section reveal" id="tray" aria-labelledby="tray-h">
 <p class="overline">데스크톱</p>
@@ -88,10 +89,23 @@ tools/riched20-selftest.sh   # PASS
 <article class="card"><h3>바 아이콘</h3><p class="files">bin/kakaotalk-tray</p><p>Wine 트레이는 XEmbed 방식이라 Omarchy 바가 표시하지 못합니다. StatusNotifierItem을 직접 등록하고, 클릭하면 숨은 카톡 창을 다시 엽니다. <code>xembedsniproxy</code>는 채팅창 키보드 입력을 가로채서 쓰지 않습니다.</p></article>
 <article class="card"><h3>창 규칙</h3><p class="files">config/hypr/hyprland-kakaotalk.lua</p><p>카톡 창을 불투명하게, Wine의 빈 <code>explorer.exe</code> 창은 숨김. 카톡 창에 포커스가 있을 때만 Ctrl+V 파일 드롭과 타이핑 중 탭 막기를 켭니다.</p></article>
 </div>
+</section><section class="section reveal" id="notify" aria-labelledby="notify-h">
+<p class="overline">알림</p>
+<h2 id="notify-h">새 메시지 알림</h2>
+<p class="intro">카톡이 화면 오른쪽 아래에 띄우는 알림 창은 숨기고, 같은 알림을 Omarchy 알림으로 보냅니다.</p>
+<ul class="plain">
+<li><code>kakaotalk-notify</code>가 Hyprland 이벤트에서 카톡 알림 창(제목 없이 화면 아래 끝에서 열리는 창)을 보면 숨김 워크스페이스로 옮기고, 제목은 방 이름, 본문은 "새 메시지", 아이콘은 카카오톡인 알림을 보냅니다. 알림을 누르면 카톡 창이 나옵니다.</li>
+<li>방 이름은 실행기 <code>kakaotalk</code>가 카톡을 Wine 글자 추적(<code>WINEDEBUG=-all,+text</code>)으로 띄우고, 알림 창에 그려지는 글자에서 방 이름만 뽑아 넘깁니다. 대화 내용이 담긴 나머지 추적은 어디에도 쓰지 않고 버립니다.</li>
+<li>카톡에서 알림을 끈 방은 카톡이 알림 창을 띄우지 않으므로 알림도 오지 않습니다.</li>
+<li><code>autostart-kakaotalk.lua</code>로 로그인할 때 자동 시작합니다.</li>
+</ul>
+<figure class="code"><figcaption>bash</figcaption><pre tabindex="0"><code>pgrep -f '[k]akaotalk-notify'            <span class="c"># 실행 중이면 PID가 나옴</span>
+setsid -f ~/.local/bin/kakaotalk-notify  <span class="c"># 없을 때만: 다시 로그인하지 않고 바로 띄우기</span></code></pre></figure>
+<p class="note">카톡 업데이트로 알림 창 모양이 바뀌면 방 이름이 빠질 수 있습니다(제목이 "카카오톡"으로 나옴). 자세히: <a href="https://github.com/Puri12/omarchy-kakaotalk-mac/blob/main/docs/notifications.md">docs/notifications.md</a></p>
 </section>
 <nav class="pager" aria-label="이전/다음 페이지"><a href="clipboard.html"><small>이전</small><span>붙여넣기</span></a><a class="next" href="troubleshooting.html"><small>다음</small><span>문제 해결</span></a></nav>
     </main>
-    <nav class="toc" aria-label="이 페이지 목차"><p>이 페이지</p><ol><li><a href="#crash">입력창 크래시</a></li><li><a href="#trackpad">트랙패드 탭</a></li><li><a href="#hangul">한글 입력</a></li><li><a href="#tray">바 아이콘·창 규칙</a></li></ol></nav>
+    <nav class="toc" aria-label="이 페이지 목차"><p>이 페이지</p><ol><li><a href="#crash">입력창 크래시</a></li><li><a href="#trackpad">트랙패드 탭</a></li><li><a href="#hangul">한글 입력</a></li><li><a href="#tray">바 아이콘·창 규칙</a></li><li><a href="#notify">새 메시지 알림</a></li></ol></nav>
   </div>
 </div>
 

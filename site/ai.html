@@ -66,9 +66,9 @@
 <h2 id="flow-h">진행 순서와 확인 조건</h2>
 <div class="table-wrap" tabindex="0" role="region" aria-label="단계별 확인 조건">
 <table><thead><tr><th scope="col">단계</th><th scope="col">통과 조건</th></tr></thead><tbody>
-<tr><td>환경 확인</td><td><code>aarch64</code>, 페이지 16384, Hyprland 0.56+, 필요한 도구 모두 있음</td></tr>
-<tr><td>Wine과 FEX 풀기</td><td><code>wine64 --version</code>이 <code>wine-11.18</code></td></tr>
-<tr><td>prefix와 카톡 설치</td><td><code>syswow64</code> 파일 800개 이상, <code>KakaoTalk.exe</code> 있음</td></tr>
+<tr><td><code>install.sh --check</code></td><td>출력 전체를 사용자에게 보여 줌. 모두 <code>[ok]</code>(종료 코드 0)면 첫 실행으로</td></tr>
+<tr><td>환경 확인</td><td><code>aarch64</code>, 페이지 16384, Hyprland 0.56+, <code>[ok] tools</code></td></tr>
+<tr><td><code>install.sh</code></td><td>다운로드와 설정 파일 수정을 알린 뒤 실행. <code>[fail]</code> 없이 끝나고 다시 <code>--check</code>가 종료 코드 0</td></tr>
 <tr><td>데스크톱 연동</td><td><code>hyprctl configerrors</code> 출력 없음</td></tr>
 <tr><td>크래시 패치</td><td><code>riched20-selftest.sh</code> 마지막 줄 PASS</td></tr>
 <tr><td>첫 실행</td><td>30초 안에 "카카오톡" 창 → 사용자에게 로그인 넘김</td></tr>
@@ -80,8 +80,9 @@
 <ul class="plain">
 <li>통과한 확인 조건과 건너뛴 조건(이유 포함)</li>
 <li>바꾼 설정 파일과 백업 위치</li>
+<li>마지막 <code>install.sh --check</code> 출력과 종료 코드</li>
 <li>직접 해야 할 일: 로그인, 나와의 채팅에서 파일 첨부 시험</li>
-<li>알려진 한계: 64비트 클라이언트 불가, 새 메시지 알림 창 없음</li>
+<li>알려진 한계: 64비트 클라이언트 불가, 알림은 방 이름과 "새 메시지"뿐(보낸 사람·내용 없음), 바 아이콘에 안 읽음 표시 없음</li>
 </ul>
 </section>
 <nav class="pager" aria-label="이전/다음 페이지"><a href="troubleshooting.html"><small>이전</small><span>문제 해결</span></a></nav>
