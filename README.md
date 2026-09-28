@@ -57,6 +57,7 @@ docs/riched20-crash.md      카톡이 스스로 종료되는 원인, 재현, 패
 docs/trackpad-typing.md     카톡에서 타이핑 중 트랙패드 탭 막기
 docs/emoji.md               이모지·기호가 네모(☒)로 보이는 문제, 고친 범위와 남은 한계
 docs/notifications.md       새 메시지 알림 원리와 한계
+docs/roadmap.md             아직 하지 않은 개선 아이디어 (알림 누르면 그 방 열기 등)
 tools/check-site-links.py   웹 가이드(site/)의 저장소 링크 검사
 .github/workflows/check.yml CI: bash -n, shellcheck, py_compile, luac -p, 링크 검사
 AI-SETUP.md                 AI 에이전트용 설치 안내 (확인 조건과 안전 규칙 포함)
