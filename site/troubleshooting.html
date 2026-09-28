@@ -4,11 +4,11 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>문제 해결 · omarchy-kakaotalk-mac</title>
-<meta name="description" content="카카오톡(Wine)이 안 뜨거나 사라지거나 종료될 때 확인할 것.">
+<meta name="description" content="카카오톡(Wine)이 안 뜨거나 사라지거나 종료될 때, 새 메시지 알림이 안 올 때 확인할 것.">
 <link rel="canonical" href="https://puri12.github.io/omarchy-kakaotalk-mac/troubleshooting.html">
 <meta property="og:type" content="website">
 <meta property="og:title" content="문제 해결 · omarchy-kakaotalk-mac">
-<meta property="og:description" content="카카오톡(Wine)이 안 뜨거나 사라지거나 종료될 때 확인할 것.">
+<meta property="og:description" content="카카오톡(Wine)이 안 뜨거나 사라지거나 종료될 때, 새 메시지 알림이 안 올 때 확인할 것.">
 <meta property="og:url" content="https://puri12.github.io/omarchy-kakaotalk-mac/troubleshooting.html">
 <meta name="twitter:card" content="summary">
 <meta name="theme-color" content="#f6f5f4">
@@ -65,7 +65,11 @@
           </details>
           <details>
             <summary>복사한 파일을 붙여넣으면 경로만 들어가요<span class="pm" aria-hidden="true"></span></summary>
-            <div class="answer">카톡 창에 포커스가 있을 때 <code>hyprctl binds</code>에 <code>KakaoTalk: paste copied files as attachments</code>가 있는지 확인합니다. 없으면 <code>config/hypr/hyprland-kakaotalk.lua</code>의 Ctrl+V 부분이 <code>hyprland.lua</code>에 들어갔는지, <code>dropfiles.py</code>가 <code>~/.local/share/kakaotalk-ec/py/</code>에 있는지 봅니다.</div>
+            <div class="answer">카톡 창에 포커스가 있을 때 <code>hyprctl binds</code>에 <code>KakaoTalk: paste copied files as attachments</code>가 있는지 확인합니다. 없으면 <code>config/hypr/hyprland-kakaotalk.lua</code>의 Ctrl+V 부분이 <code>hyprland.lua</code>에 들어갔는지, <code>dropfiles.py</code>가 <code>~/.local/share/kakaotalk-ec/py/</code>에 있는지 봅니다. 바인딩이 있는데도 경로가 붙으면 포커스된 카톡 창을 Wine 쪽에서 찾지 못해 원래 Ctrl+V를 넘긴 것입니다. 채팅방 창을 한 번 클릭한 뒤 다시 누릅니다.</div>
+          </details>
+          <details>
+            <summary>새 메시지 알림이 안 와요<span class="pm" aria-hidden="true"></span></summary>
+            <div class="answer"><code>pgrep -f '[k]akaotalk-notify'</code>에 PID가 나오는지 봅니다. 없으면 <code>command -v inotifywait</code>로 <code>inotifywait</code>(inotify-tools 패키지)가 설치됐는지 확인하고 <code>setsid -f ~/.local/bin/kakaotalk-notify</code>로 띄웁니다. 카톡 창에 포커스가 있을 때는 원래 알리지 않습니다. 카톡에 처음 로그인한 뒤에는 채팅 폴더를 찾기까지 최대 30초가 걸립니다. <a href="stability.html#notify">자세히</a></div>
           </details>
           <details>
             <summary>로그아웃/로그인 뒤 wireplumber가 CPU 100%예요<span class="pm" aria-hidden="true"></span></summary>
@@ -85,6 +89,7 @@
       <section class="section reveal" id="logs" aria-labelledby="logs-h">
 <p class="overline">로그</p>
 <h2 id="logs-h">로그 보기</h2>
+<p>로그가 1MiB를 넘으면 카톡을 실행할 때 <code>kakaotalk check</code>가 마지막 2000줄만 남깁니다. <code>kakaotalk check</code>를 직접 실행하면 점검 항목마다 한 줄씩 출력합니다.</p>
 <figure class="code"><figcaption>bash</figcaption><pre tabindex="0"><code>tail -n 20 ~/.local/state/kakaotalk.log     # 시작/종료 시각과 종료 코드, Wine 오류
 KAKAO_WINEDEBUG=-all,+loaddll kakaotalk      # 어떤 DLL을 불러오는지 (글자 내용은 남지 않음)</code></pre></figure>
 <p class="note"><code>+font</code>, <code>+richedit</code> 같은 추적은 화면의 글자(대화 내용)를 그대로 남기므로 켜지 마세요.</p>

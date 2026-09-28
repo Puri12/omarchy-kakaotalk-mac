@@ -4,11 +4,11 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>설치 · omarchy-kakaotalk-mac</title>
-<meta name="description" content="Apple Silicon Omarchy에 ARM64EC Wine과 32비트 카카오톡을 설치하는 7단계와 명령.">
+<meta name="description" content="Apple Silicon Omarchy에 ARM64EC Wine과 32비트 카카오톡을 설치하는 install.sh 빠른 설치와 7단계 명령.">
 <link rel="canonical" href="https://puri12.github.io/omarchy-kakaotalk-mac/install.html">
 <meta property="og:type" content="website">
 <meta property="og:title" content="설치 · omarchy-kakaotalk-mac">
-<meta property="og:description" content="Apple Silicon Omarchy에 ARM64EC Wine과 32비트 카카오톡을 설치하는 7단계와 명령.">
+<meta property="og:description" content="Apple Silicon Omarchy에 ARM64EC Wine과 32비트 카카오톡을 설치하는 install.sh 빠른 설치와 7단계 명령.">
 <meta property="og:url" content="https://puri12.github.io/omarchy-kakaotalk-mac/install.html">
 <meta name="twitter:card" content="summary">
 <meta name="theme-color" content="#f6f5f4">
@@ -39,16 +39,30 @@
   </div>
 </header>
 
-<section class="page-head"><div class="shell"><p class="overline">설치</p><h1>설치 순서</h1><p class="lead">저장소를 받은 폴더에서 차례로 실행합니다. 경로는 모두 홈 디렉터리 기준이고, 시스템 패키지는 설치하지 않습니다.</p></div></section>
+<section class="page-head"><div class="shell"><p class="overline">설치</p><h1>설치 순서</h1><p class="lead">저장소를 받은 폴더에서 <code>install.sh</code>를 실행하거나, 아래 7단계를 차례로 실행합니다. 경로는 모두 홈 디렉터리 기준이고, 시스템 패키지는 설치하지 않습니다.</p></div></section>
 <div class="shell">
   <div class="doc">
     <main id="main">
-<section class="section reveal" id="before" aria-labelledby="before-h">
+<section class="section reveal" id="quick" aria-labelledby="quick-h">
+<p class="overline">스크립트</p>
+<h2 id="quick-h">빠른 설치</h2>
+<p class="intro"><code>install.sh</code>가 아래 1~7단계를 차례로 실행합니다. 단계마다 끝난 상태를 먼저 확인해서 이미 끝난 단계는 건너뛰므로, 여러 번 실행해도 됩니다.</p>
+<p>바로 아래 <a href="#before">준비물</a>을 갖추고, 저장소를 받은 폴더에서 실행합니다.</p>
+<figure class="code"><figcaption>bash</figcaption><pre tabindex="0"><code>./install.sh --check   <span class="c"># 점검만. 모두 [ok]면 종료 코드 0</span>
+./install.sh           <span class="c"># [todo]인 단계만 순서대로 실행</span></code></pre></figure>
+<ul class="plain">
+<li><code>--check</code>는 아무것도 바꾸지 않습니다. 단계마다 <code>[ok]</code>, 또는 빠진 것과 함께 <code>[todo]</code>를 한 줄씩 출력합니다. <code>[info]</code> 줄은 설치된 스크립트가 저장소와 다르다는 알림이고 실패가 아닙니다.</li>
+<li><code>sudo</code>를 쓰지 않습니다. 필요한 도구가 없으면 목록을 출력하고 멈추므로, 직접 설치한 뒤 다시 실행합니다.</li>
+<li><code>~/.config</code>의 파일은 고치기 전에 <code>&lt;파일&gt;.bak.&lt;시각&gt;</code>으로 백업하고, Hyprland 설정 블록은 한 번만 덧붙입니다.</li>
+<li>한 단계만 다시 하려면 <code>./install.sh --step N</code>(1~7)을 씁니다. 예를 들어 <code>--step 2</code>는 <code>~/.local/bin</code>의 스크립트를 저장소 버전으로 바꿉니다.</li>
+</ul>
+<p class="note">스크립트는 카톡을 실행하지 않습니다. 끝나면 한 번 다시 로그인해 자동 시작 도우미(스크린샷 브리지, 바 아이콘, 알림)를 띄우고, 카톡을 실행해 직접 로그인합니다. 스크립트가 한 단계에서 멈추면 출력을 보고 그 단계를 아래 명령으로 손으로 실행합니다.</p>
+</section><section class="section reveal" id="before" aria-labelledby="before-h">
 <p class="overline">설치 전</p>
 <h2 id="before-h">준비물</h2>
 <ul class="plain">
 <li>Apple Silicon 맥 + Asahi Linux(16K 페이지) + Omarchy, Hyprland 0.56 이상(Lua 설정), fcitx5</li>
-<li>도구: <code>curl</code>, <code>bsdtar</code>, <code>python3</code>, <code>magick</code>, <code>wl-clipboard</code>, <code>jq</code>, <code>patch</code>, <code>make</code>, <code>gcc</code>, <code>bison</code>, <code>flex</code> — 모두 root 없이 사용자 홈에 설치됩니다</li>
+<li>도구: <code>curl</code>, <code>bsdtar</code>, <code>python3</code>, <code>magick</code>, <code>wl-clipboard</code>, <code>jq</code>, <code>patch</code>, <code>make</code>, <code>gcc</code>, <code>bison</code>, <code>flex</code>, <code>inotifywait</code>(inotify-tools) — 없는 도구는 직접 설치해야 합니다(<code>./install.sh --check</code>가 목록을 알려 줍니다). 카톡과 Wine은 root 없이 사용자 홈에 설치됩니다</li>
 <li>디스크: Wine 약 2.3GB, 크래시 패치 빌드 중 임시로 약 1.2GB</li>
 </ul>
 <figure class="code"><figcaption>bash</figcaption><pre tabindex="0"><code>git clone https://github.com/Puri12/omarchy-kakaotalk-mac.git
@@ -56,6 +70,7 @@ cd omarchy-kakaotalk-mac</code></pre></figure>
 </section><section class="section reveal" id="steps" aria-labelledby="install-h">
         <p class="overline">단계</p>
         <h2 id="install-h">단계별 명령</h2>
+        <p class="intro"><code>install.sh</code>가 하는 일을 단계별로 적었습니다. 스크립트를 쓰지 않거나 스크립트가 한 단계에서 멈췄을 때 손으로 실행합니다.</p>
         <ol class="steps">
           <li class="step" id="step-1">
             <span class="step__num" aria-hidden="true">1</span>
@@ -87,8 +102,8 @@ done</code></pre></figure>
             <span class="step__num" aria-hidden="true">2</span>
             <div class="step__body">
               <h3>실행 스크립트 설치</h3>
-              <figure class="code"><figcaption>bash</figcaption><pre tabindex="0"><code>install -m755 bin/kakaotalk bin/kakaotalk-clipbridge bin/kakaotalk-tray bin/kakaotalk-paste ~/.local/bin/</code></pre></figure>
-              <p><code>kakaotalk</code>은 <code>HODLL=libwow64fex.dll</code>(32비트 x86 코드를 FEX로 에뮬레이션)과 <code>winebth.sys</code> 차단을 설정합니다. <code>kakaotalk wine &lt;명령&gt;</code>으로 이 prefix의 Wine을 실행할 수 있습니다.</p>
+              <figure class="code"><figcaption>bash</figcaption><pre tabindex="0"><code>install -m755 bin/kakaotalk bin/kakaotalk-clipbridge bin/kakaotalk-tray bin/kakaotalk-paste bin/kakaotalk-notify ~/.local/bin/</code></pre></figure>
+              <p><code>kakaotalk</code>은 <code>HODLL=libwow64fex.dll</code>(32비트 x86 코드를 FEX로 에뮬레이션)과 <code>winebth.sys</code> 차단을 설정합니다. <code>kakaotalk wine &lt;명령&gt;</code>으로 이 prefix의 Wine을 실행할 수 있습니다. <code>kakaotalk check</code>는 로그를 정리하고 필요하면 riched20 패치를 다시 넣습니다. 카톡을 실행할 때마다 자동으로 실행됩니다.</p>
             </div>
           </li>
 
@@ -142,6 +157,7 @@ cat config/hypr/hyprland-kakaotalk.lua &gt;&gt; ~/.config/hypr/hyprland.lua
 cat config/hypr/autostart-kakaotalk.lua &gt;&gt; ~/.config/hypr/autostart.lua
 hyprctl reload &amp;&amp; hyprctl configerrors</code></pre></figure>
               <p><code>~/.config/omarchy/shell.json</code>의 <code>{"id": "omarchy.tray"}</code> 항목을 <code>config/omarchy/shell-tray-entry.json</code> 내용으로 바꾸고 <code>omarchy restart shell</code>을 실행합니다.</p>
+              <p class="note">예전 블록이 이미 들어 있다면 <code>autostart.lua</code>에는 <code>kakaotalk-notify</code> 줄만 추가합니다. 블록을 두 번 덧붙이면 도우미가 두 개씩 뜹니다.</p>
               <p class="note"><code>.desktop</code>의 <code>Exec=kakaotalk</code>은 <code>~/.local/bin</code>이 세션 <code>PATH</code>에 있다고 가정합니다(Omarchy 기본값).</p>
             </div>
           </li>
@@ -153,7 +169,7 @@ hyprctl reload &amp;&amp; hyprctl configerrors</code></pre></figure>
               <figure class="code"><figcaption>bash</figcaption><pre tabindex="0"><code>tools/build-riched20.sh      # 약 110MB 다운로드, 빌드 후 정리
 tools/riched20-selftest.sh   # 마지막 줄이 PASS면 적용됨
 ~/.local/bin/kakaotalk kill &amp;&amp; kakaotalk</code></pre></figure>
-              <p class="note">원본은 보관되며 <code>tools/build-riched20.sh --restore</code>로 되돌립니다. 자세한 내용은 <a href="stability.html#crash">안정성</a> 페이지에 있습니다.</p>
+              <p class="note">원본은 보관되며 <code>tools/build-riched20.sh --restore</code>로 되돌립니다. Wine을 같은 버전으로 다시 풀어도 카톡을 실행할 때 <code>kakaotalk check</code>가 패치본을 다시 넣습니다. 자세한 내용은 <a href="stability.html#crash">안정성</a> 페이지에 있습니다.</p>
             </div>
           </li>
         </ol>
@@ -161,7 +177,7 @@ tools/riched20-selftest.sh   # 마지막 줄이 PASS면 적용됨
 
 <nav class="pager" aria-label="이전/다음 페이지"><a href="index.html"><small>이전</small><span>개요</span></a><a class="next" href="clipboard.html"><small>다음</small><span>붙여넣기</span></a></nav>
     </main>
-    <nav class="toc" aria-label="이 페이지 목차"><p>이 페이지</p><ol><li><a href="#before">준비물</a></li><li><a href="#step-1">1. Wine과 FEX</a></li><li><a href="#step-2">2. 실행 스크립트</a></li><li><a href="#step-3">3. prefix 설정</a></li><li><a href="#step-4">4. 카카오톡 설치</a></li><li><a href="#step-5">5. 도우미 Python</a></li><li><a href="#step-6">6. 데스크톱 연동</a></li><li><a href="#step-7">7. 크래시 패치</a></li></ol></nav>
+    <nav class="toc" aria-label="이 페이지 목차"><p>이 페이지</p><ol><li><a href="#quick">빠른 설치</a></li><li><a href="#before">준비물</a></li><li><a href="#step-1">1. Wine과 FEX</a></li><li><a href="#step-2">2. 실행 스크립트</a></li><li><a href="#step-3">3. prefix 설정</a></li><li><a href="#step-4">4. 카카오톡 설치</a></li><li><a href="#step-5">5. 도우미 Python</a></li><li><a href="#step-6">6. 데스크톱 연동</a></li><li><a href="#step-7">7. 크래시 패치</a></li></ol></nav>
   </div>
 </div>
 
