@@ -6,11 +6,18 @@ chat_data/chatLogs_<roomId>.edb-wal when one arrives. This daemon watches those 
 inotifywait (names only; the encrypted contents are never read) and sends one notification
 per room per burst. Nothing is sent while a KakaoTalk window is focused.
 
+KakaoTalk's own per-room mute setting sits in an encrypted database, so rooms are muted here
+instead: every notification has a "이 방 알림 끄기" button that adds the room id to
+~/.config/kakaotalk-notify/muted (one id per line; delete a line to unmute). Clicking the
+notification itself opens KakaoTalk.
+
 Usage: kakaotalk-notify   (started by Hyprland autostart; see docs/notifications.md)
 
 Testing overrides:
   KAKAO_CHAT_DATA_GLOB  glob of chat_data dirs to watch
-  NOTIFY_CMD            command prefix; headline and body are appended as two args
+  KAKAO_NOTIFY_MUTED    path of the muted-rooms file
+  NOTIFY_CMD            command prefix; headline, body and room id are appended; a stdout line
+                        "mute" or "default" is handled like the notification's action
   ACTIVE_CLASS_CMD      command printing the active window class
 """
 import glob
@@ -21,6 +28,7 @@ import shlex
 import signal
 import subprocess
 import sys
+import threading
 import time
 
 ICON = os.path.expanduser("~/.local/share/icons/kakaotalk.png")
@@ -52,18 +60,72 @@ def active_class():
         return ""
 
 
-def notify_argv():
+MUTED_FILE = os.environ.get("KAKAO_NOTIFY_MUTED") or os.path.join(
+    os.environ.get("XDG_CONFIG_HOME") or os.path.expanduser("~/.config"), "kakaotalk-notify", "muted")
+
+
+class Muted:
+    """Room ids from MUTED_FILE, re-read whenever the file changes."""
+
+    def __init__(self):
+        self.mtime = None
+        self.ids = set()
+        self.lock = threading.Lock()
+
+    def __contains__(self, room):
+        try:
+            mtime = os.stat(MUTED_FILE).st_mtime_ns
+        except FileNotFoundError:
+            mtime = None
+        if mtime != self.mtime:
+            self.mtime = mtime
+            self.ids = set()
+            if mtime is not None:
+                with open(MUTED_FILE, encoding="utf-8") as f:
+                    self.ids = {line.split("#")[0].strip() for line in f} - {""}
+        return room in self.ids
+
+    def add(self, room):
+        with self.lock:
+            if room in self:
+                return
+            os.makedirs(os.path.dirname(MUTED_FILE), exist_ok=True)
+            with open(MUTED_FILE, "a", encoding="utf-8") as f:
+                f.write(f"{room}  # muted {time.strftime('%F %T')}\n")
+            log(f"muted room {room}")
+
+
+def notify_argv(room):
     cmd = os.environ.get("NOTIFY_CMD")
     if cmd:
-        return shlex.split(cmd) + [HEADLINE, BODY]
-    return ["omarchy", "notification", "send", "--app-name", HEADLINE, "-i", ICON,
-            HEADLINE, BODY, "--exec", "kakaotalk"]
+        return shlex.split(cmd) + [HEADLINE, BODY, room]
+    return ["notify-send", "--app-name", HEADLINE, "--icon", ICON,
+            "--action", "default=열기", "--action", "mute=이 방 알림 끄기", HEADLINE, BODY]
+
+
+def notify(room, muted):
+    """Show one notification and act on the chosen action (runs in its own thread)."""
+    try:
+        proc = subprocess.Popen(notify_argv(room), stdout=subprocess.PIPE, text=True)
+    except OSError as e:
+        log(f"notification failed: {e}")
+        return
+    for line in proc.stdout:
+        action = line.strip()
+        if action == "mute":
+            muted.add(room)
+        elif action == "default":
+            subprocess.Popen(["kakaotalk"], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL,
+                             start_new_session=True)
+        elif action:
+            print(action, flush=True)
+    proc.wait()
 
 
 def main():
     pattern = os.environ.get("KAKAO_CHAT_DATA_GLOB", DEFAULT_GLOB)
     last = {}  # room file name -> monotonic time of the event that started its burst
-    children = []  # notifier processes (may stay alive until the notification is clicked/closed)
+    muted = Muted()
     watcher = None
 
     def stop(*_):
@@ -85,19 +147,17 @@ def main():
         )
         for line in watcher.stdout:
             name = line.rstrip("\n")
-            if not ROOM_FILE.match(name):
+            match = ROOM_FILE.match(name)
+            if not match:
                 continue
             now = time.monotonic()
             if now - last.get(name, -DEBOUNCE) < DEBOUNCE:
                 continue
             last[name] = now  # also set when suppressed, so the rest of the burst stays quiet
-            if active_class().lower() == KAKAO_CLASS:
+            room = match.group(1)
+            if room in muted or active_class().lower() == KAKAO_CLASS:
                 continue
-            children = [c for c in children if c.poll() is None]
-            try:
-                children.append(subprocess.Popen(notify_argv()))
-            except OSError as e:
-                log(f"notification failed: {e}")
+            threading.Thread(target=notify, args=(room, muted), daemon=True).start()
         watcher.wait()
         log(f"inotifywait exited ({watcher.returncode}); rescanning in {RESCAN}s")
         time.sleep(RESCAN)
