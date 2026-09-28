@@ -4,6 +4,8 @@
 # "Assertion failed: ~para->nFlags & MEPF_REWRAP, file dlls/riched20/caret.c". See docs/riched20-crash.md.
 #   tools/build-riched20.sh             build + install (the original is kept for --restore)
 #   tools/build-riched20.sh --restore   put the original riched20.dll back
+# After install, writes riched20-fix/riched20.dll.patched.wine-version (`wine64 --version`)
+# so `kakaotalk check` can reinstall this DLL only for the same Wine build.
 # No root needed: the i386 PE cross compiler comes from an llvm-mingw release tarball.
 # Downloads ~110 MB and uses ~1.2 GB under ~/.cache while building; removed afterwards
 # (set KEEP_BUILD=1 to keep it). Restart KakaoTalk afterwards (kakaotalk kill; kakaotalk).
@@ -78,6 +80,9 @@ if [[ ! -f "$keep/riched20.dll.orig" ]]; then
 fi
 cp "$built" "$keep/riched20.dll.patched"
 install_dll "$built"
+# Stamp the Wine build this DLL was compiled against. The launcher reinstalls it only
+# when `wine64 --version` still prints this string.
+printf '%s\n' "$installed" > "$keep/riched20.dll.patched.wine-version"
 echo "installed patched riched20.dll (original: $keep/riched20.dll.orig)"
 
 cd /

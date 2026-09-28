@@ -3,6 +3,7 @@
 # plus FEX's wow64 DLL, running natively (no muvm). Uses the 32-bit client: the 64-bit one dies in its
 # Themida-protected Vox.dll here.
 #   kakaotalk              launch KakaoTalk
+#   kakaotalk check        rotate the log and reapply the riched20 patch if Wine restored the stock DLL
 #   kakaotalk wine ARGS    run this prefix's wine with ARGS (e.g. `kakaotalk wine regedit`)
 #   kakaotalk kill         stop this prefix's wineserver
 set -euo pipefail
@@ -12,13 +13,130 @@ export PATH="$root/usr/bin:$PATH" WINEPREFIX="$HOME/.local/share/kakaotalk-ec/pr
 export WINEDEBUG="${KAKAO_WINEDEBUG:--all}" HODLL=libwow64fex.dll
 export WINEDLLOVERRIDES='winebth.sys=;winemenubuilder.exe=' XMODIFIERS='@im=fcitx'
 exe="$WINEPREFIX/drive_c/Program Files (x86)/Kakao/KakaoTalk/KakaoTalk.exe"
+log="$HOME/.local/state/kakaotalk.log"
+dll="$root/usr/lib64/wine/i386-windows/riched20.dll"
+keep="$HOME/.local/share/kakaotalk-ec/riched20-fix"
+patched="$keep/riched20.dll.patched"
+stamp="$keep/riched20.dll.patched.wine-version"
+
+# Bound ~/.local/state/kakaotalk.log, and put the patched riched20.dll back when a Wine unpack
+# restored the stock DLL (the one that still contains MEPF_REWRAP). Reinstall only when
+# riched20.dll.patched.wine-version matches this wine64 --version; otherwise warn to rerun
+# tools/build-riched20.sh. Silent on launch; `kakaotalk check` prints one line per check.
+report=0
+rotated=0
+
+say() {
+  if (( report )); then
+    printf '%s\n' "$*"
+  fi
+}
+
+append_log() {
+  local size n tmp
+  mkdir -p "$(dirname "$log")"
+  if [[ -s "$log" && "$(tail -c1 "$log" | od -An -c | tr -d ' ')" != '\n' ]]; then
+    printf '\n' >> "$log"
+  fi
+  printf '%s\n' "=== $(date '+%F %T') $*" >> "$log"
+  size=$(stat -c%s "$log")
+  n=$(wc -l < "$log")
+  # A pre-launch trim already kept 2000 lines; the line just appended must stay inside that cap.
+  if (( size > 1048576 )) || { (( rotated )) && (( n > 2000 )); }; then
+    tmp=$(mktemp "${log}.XXXXXX")
+    tail -n 2000 "$log" > "$tmp"
+    chmod --reference="$log" "$tmp"
+    mv -f "$tmp" "$log"
+  fi
+}
+
+rotate_log() {
+  local size tmp
+  rotated=0
+  if [[ ! -f "$log" ]]; then
+    say "log: absent"
+    return 0
+  fi
+  size=$(stat -c%s "$log")
+  if (( size > 1048576 )); then
+    tmp=$(mktemp "${log}.XXXXXX")
+    tail -n 2000 "$log" > "$tmp"
+    chmod --reference="$log" "$tmp"
+    mv -f "$tmp" "$log"
+    rotated=1
+    say "log: rotated to last 2000 lines"
+  else
+    say "log: ok"
+  fi
+}
+
+warn_riched20() {
+  local current=$1 stored=$2
+  if [[ ! -f "$stamp" ]]; then
+    append_log "warning: riched20 patch has no wine-version stamp; run tools/build-riched20.sh"
+    say "riched20: warning: wine-version file missing; run tools/build-riched20.sh"
+  else
+    append_log "warning: riched20 patch is for '${stored:-unknown}' but wine is '${current:-unknown}'; run tools/build-riched20.sh"
+    say "riched20: warning: wine version mismatch; run tools/build-riched20.sh"
+  fi
+}
+
+kakao_maintain() {
+  local current="" stored="" stock=0 stamp_ok=0
+  report=$1
+  rotate_log
+
+  if [[ -f "$dll" ]] && grep -aq 'MEPF_REWRAP' "$dll"; then
+    stock=1
+  fi
+  if [[ -f "$root/usr/bin/wine64" ]]; then
+    current="$("$root/usr/bin/wine64" --version 2>/dev/null || true)"
+  fi
+  if [[ -f "$stamp" ]]; then
+    stored="$(<"$stamp")"
+  fi
+  if [[ -n "$current" && -f "$stamp" && "$stored" == "$current" ]]; then
+    stamp_ok=1
+  fi
+
+  if (( stock )) && (( stamp_ok )) && [[ -f "$patched" ]]; then
+    install -m755 "$patched" "$dll.new"
+    mv -f "$dll.new" "$dll"
+    append_log "reinstalled patched riched20.dll"
+    say "riched20: reinstalled patched DLL"
+    return 0
+  fi
+  if (( ! stamp_ok )); then
+    warn_riched20 "$current" "$stored"
+    return 0
+  fi
+  if (( stock )); then
+    append_log "warning: stock riched20.dll and no patched DLL; run tools/build-riched20.sh"
+    say "riched20: warning: patched DLL missing; run tools/build-riched20.sh"
+    return 0
+  fi
+  if [[ ! -f "$dll" ]]; then
+    say "riched20: not installed"
+    return 0
+  fi
+  say "riched20: already patched"
+}
 
 case "${1:-}" in
+  check) kakao_maintain 1 ;;
   wine) shift; exec wine "$@" ;;
   kill) exec wineserver -k ;;
   "")
     [[ -f "$exe" ]] || { echo "KakaoTalk not installed: $exe" >&2; exit 1; }
+    kakao_maintain 0
     cd "$(dirname "$exe")"
-    exec wine "$exe" ;;
-  *) echo "usage: kakaotalk [wine ARGS|kill]" >&2; exit 2 ;;
+    # Keep stderr (incl. Wine assertions and winedbg backtraces) and the exit status: callers
+    # such as kakaotalk-tray discard output, so an exit would otherwise leave no trace.
+    mkdir -p "$(dirname "$log")"
+    echo "=== $(date '+%F %T') start (pid $$)" >>"$log"
+    status=0
+    wine "$exe" 2>>"$log" || status=$?
+    echo "=== $(date '+%F %T') exit $status (pid $$)" >>"$log"
+    exit "$status" ;;
+  *) echo "usage: kakaotalk [check|wine ARGS|kill]" >&2; exit 2 ;;
 esac
