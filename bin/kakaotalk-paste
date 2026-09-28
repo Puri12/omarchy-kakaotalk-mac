@@ -4,9 +4,11 @@
 KakaoTalk's Ctrl+V ignores files on the clipboard and pastes their paths as text, but its chat
 windows accept file drops. Hyprland binds Ctrl+V to this script only while a KakaoTalk window is
 focused (~/.config/hypr/hyprland.lua). If the clipboard holds local files (text/uri-list), they are
-dropped onto the focused chat window (dropfiles.py inside the Wine prefix); otherwise, or if the
-focused window takes no drops, the real Ctrl+V is passed on, so text and images paste as before.
+dropped onto the chat window Hyprland has focused, matched by title and geometry from
+`hyprctl activewindow` (dropfiles.py inside the Wine prefix); otherwise, or if no single window
+matches or takes the drop, the real Ctrl+V is passed on, so text and images paste as before.
 """
+import json
 import os
 import subprocess
 import sys
@@ -49,14 +51,34 @@ def send_ctrl_v():
         time.sleep(0.05)
 
 
+def focused_window():
+    """Title and geometry of the focused window if it is KakaoTalk's, else None."""
+    out = subprocess.run(["hyprctl", "activewindow", "-j"], capture_output=True, text=True, timeout=5).stdout
+    try:
+        win = json.loads(out)
+        if win.get("class") != "kakaotalk.exe":
+            return None
+        (x, y), (w, h) = win["at"], win["size"]
+        return win["title"], [str(int(v)) for v in (x, y, w, h)]
+    except (ValueError, KeyError, TypeError, AttributeError):
+        return None
+
+
 def main():
     paths = local_files()
-    if paths:
+    target = focused_window() if paths else None
+    if paths and target:
+        title, geometry = target
         result = subprocess.run([KAKAOTALK, "wine", f"Z:{PY_DIR}/python.exe", "-X", "utf8",
-                                 f"Z:{PY_DIR}/dropfiles.py", *paths],
+                                 f"Z:{PY_DIR}/dropfiles.py", "--target", title, *geometry, *paths],
                                 capture_output=True, text=True, timeout=60)
         if result.returncode == 0:
-            log(f"dropped {len(paths)} file(s)")
+            log(f"dropped {len(paths)} file(s) on {title!r}")
+            return
+        if result.returncode == 4:
+            # The drop was delivered and KakaoTalk is still handling it (e.g. its confirm dialog
+            # is open): a passed-through Ctrl+V would paste the paths as text on top of it.
+            log(f"warning: {title!r} did not finish handling the drop in time: {result.stderr.strip()[-300:]}")
             return
         if result.returncode != 3:
             log(f"drop failed ({result.returncode}): {result.stderr.strip()[-300:]}")
