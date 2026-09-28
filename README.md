@@ -8,6 +8,8 @@ Apple Silicon 맥(Asahi Linux)에서 돌아가는 Omarchy에서 **Windows용 카
 
 카카오톡 바이너리와 계정 정보는 들어 있지 않다. 설치 파일은 카카오 CDN에서 받는다.
 
+웹 가이드: https://puri12.github.io/omarchy-kakaotalk-mac/ (`site/`, GitHub Actions로 배포)
+
 ---
 
 ## 결론 요약
