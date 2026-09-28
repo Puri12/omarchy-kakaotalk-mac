@@ -35,9 +35,8 @@ end
 hl.on("window.active", kakao_paste_update)
 kakao_paste_update()
 
--- Typing in KakaoTalk still lets stray trackpad taps through, which moves the caret or clicks
--- other chat windows. While a KakaoTalk window is focused, each key press turns tap-to-click off
--- until 700 ms after the last key; physical clicks keep working.
+-- While typing in KakaoTalk, temporarily disable tap-to-click if it was enabled; restore it
+-- 700 ms after the last key. Users who keep it disabled are left unchanged.
 local kakao_tap_generation = 0
 local kakao_tap_blocked = false
 
@@ -54,6 +53,9 @@ hl.on("input.keyboard.key", function()
   kakao_tap_generation = kakao_tap_generation + 1
   local generation = kakao_tap_generation
   if not kakao_tap_blocked then
+    if hl.get_config("input:touchpad:tap_to_click") ~= true then
+      return
+    end
     kakao_tap_set(false)
   end
   hl.timer(function()
