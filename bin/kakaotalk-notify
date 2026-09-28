@@ -1,0 +1,107 @@
+#!/usr/bin/env python3
+"""Desktop notification when a KakaoTalk chat receives a message; clicking it shows KakaoTalk.
+
+This KakaoTalk never opens popup windows for new messages, but it rewrites the room's
+chat_data/chatLogs_<roomId>.edb-wal when one arrives. This daemon watches those files with
+inotifywait (names only; the encrypted contents are never read) and sends one notification
+per room per burst. Nothing is sent while a KakaoTalk window is focused.
+
+Usage: kakaotalk-notify   (started by Hyprland autostart; see docs/notifications.md)
+
+Testing overrides:
+  KAKAO_CHAT_DATA_GLOB  glob of chat_data dirs to watch
+  NOTIFY_CMD            command prefix; headline and body are appended as two args
+  ACTIVE_CLASS_CMD      command printing the active window class
+"""
+import glob
+import json
+import os
+import re
+import shlex
+import signal
+import subprocess
+import sys
+import time
+
+ICON = os.path.expanduser("~/.local/share/icons/kakaotalk.png")
+DEFAULT_GLOB = os.path.expanduser(
+    "~/.local/share/kakaotalk-ec/prefix/drive_c/users/*/AppData/Local/Kakao/KakaoTalk/users/*/chat_data"
+)
+ROOM_FILE = re.compile(r"^chatLogs_(\d+)\.edb-wal$")
+HEADLINE = "카카오톡"
+BODY = "새 메시지"
+DEBOUNCE = 5.0  # seconds; one message is a burst of writes within about a second
+RESCAN = 30  # seconds between looks for account dirs
+KAKAO_CLASS = "kakaotalk.exe"
+
+
+def log(msg):
+    print(f"kakaotalk-notify: {msg}", file=sys.stderr, flush=True)
+
+
+def active_class():
+    cmd = os.environ.get("ACTIVE_CLASS_CMD")
+    try:
+        if cmd:
+            out = subprocess.run(shlex.split(cmd), capture_output=True, text=True, timeout=2).stdout
+            return out.strip()
+        out = subprocess.run(["hyprctl", "activewindow", "-j"], capture_output=True, text=True, timeout=2).stdout
+        return (json.loads(out or "{}") or {}).get("class", "")
+    except (OSError, subprocess.SubprocessError, ValueError) as e:
+        log(f"active window lookup failed: {e}")
+        return ""
+
+
+def notify_argv():
+    cmd = os.environ.get("NOTIFY_CMD")
+    if cmd:
+        return shlex.split(cmd) + [HEADLINE, BODY]
+    return ["omarchy", "notification", "send", "--app-name", HEADLINE, "-i", ICON,
+            HEADLINE, BODY, "--exec", "kakaotalk"]
+
+
+def main():
+    pattern = os.environ.get("KAKAO_CHAT_DATA_GLOB", DEFAULT_GLOB)
+    last = {}  # room file name -> monotonic time of the event that started its burst
+    children = []  # notifier processes (may stay alive until the notification is clicked/closed)
+    watcher = None
+
+    def stop(*_):
+        if watcher and watcher.poll() is None:
+            watcher.terminate()
+        sys.exit(0)
+
+    signal.signal(signal.SIGTERM, stop)
+    signal.signal(signal.SIGINT, stop)
+
+    while True:
+        dirs = sorted(d for d in glob.glob(pattern) if os.path.isdir(d))
+        if not dirs:
+            time.sleep(RESCAN)
+            continue
+        watcher = subprocess.Popen(
+            ["inotifywait", "-q", "-m", "-e", "modify", "-e", "close_write", "--format", "%f", *dirs],
+            stdout=subprocess.PIPE, text=True, bufsize=1,
+        )
+        for line in watcher.stdout:
+            name = line.rstrip("\n")
+            if not ROOM_FILE.match(name):
+                continue
+            now = time.monotonic()
+            if now - last.get(name, -DEBOUNCE) < DEBOUNCE:
+                continue
+            last[name] = now  # also set when suppressed, so the rest of the burst stays quiet
+            if active_class().lower() == KAKAO_CLASS:
+                continue
+            children = [c for c in children if c.poll() is None]
+            try:
+                children.append(subprocess.Popen(notify_argv()))
+            except OSError as e:
+                log(f"notification failed: {e}")
+        watcher.wait()
+        log(f"inotifywait exited ({watcher.returncode}); rescanning in {RESCAN}s")
+        time.sleep(RESCAN)
+
+
+if __name__ == "__main__":
+    main()
