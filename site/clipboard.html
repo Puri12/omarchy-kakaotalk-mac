@@ -1,0 +1,100 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>붙여넣기 · omarchy-kakaotalk-mac</title>
+<meta name="description" content="카카오톡(Wine)에 스크린샷과 복사한 파일·동영상을 Ctrl+V로 첨부하는 방법과 원리.">
+<link rel="canonical" href="https://puri12.github.io/omarchy-kakaotalk-mac/clipboard.html">
+<meta property="og:type" content="website">
+<meta property="og:title" content="붙여넣기 · omarchy-kakaotalk-mac">
+<meta property="og:description" content="카카오톡(Wine)에 스크린샷과 복사한 파일·동영상을 Ctrl+V로 첨부하는 방법과 원리.">
+<meta property="og:url" content="https://puri12.github.io/omarchy-kakaotalk-mac/clipboard.html">
+<meta name="twitter:card" content="summary">
+<meta name="theme-color" content="#f6f5f4">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='8' fill='%23FEE500'/%3E%3Cpath d='M16 8c-5 0-9 3.1-9 7 0 2.5 1.7 4.7 4.2 5.9l-1 3.6 4.1-2.7c.6.1 1.1.1 1.7.1 5 0 9-3.1 9-7s-4-6.9-9-6.9z' fill='%23191919'/%3E%3C/svg%3E">
+<link rel="stylesheet" href="style.css">
+<script>document.documentElement.classList.add('js')</script>
+<script src="app.js" defer></script>
+</head>
+<body>
+<a class="skip" href="#main">본문으로 건너뛰기</a>
+
+<header class="site-header">
+  <div class="shell">
+    <a class="brand" href="index.html" aria-label="omarchy-kakaotalk-mac 처음으로">
+      <span class="brand__mark" aria-hidden="true"><svg viewBox="0 0 16 16"><path d="M8 2.5C4.4 2.5 1.5 4.8 1.5 7.6c0 1.8 1.2 3.4 3 4.3l-.7 2.6 3-2c.4.1.8.1 1.2.1 3.6 0 6.5-2.3 6.5-5S11.6 2.5 8 2.5z" fill="#191919"/></svg></span>
+      omarchy-kakaotalk-mac
+    </a>
+    <a class="header-gh" href="https://github.com/Puri12/omarchy-kakaotalk-mac"><svg viewBox="0 0 16 16" aria-hidden="true"><path fill="currentColor" d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.013 8.013 0 0016 8c0-4.42-3.58-8-8-8z"/></svg> GitHub</a>
+    <nav class="site-nav" aria-label="사이트">
+      <a href="index.html">개요</a>
+      <a href="install.html">설치</a>
+      <a href="clipboard.html" aria-current="page">붙여넣기</a>
+      <a href="stability.html">안정성</a>
+      <a href="troubleshooting.html">문제 해결</a>
+      <a href="ai.html">AI 설치</a>
+      <a class="gh" href="https://github.com/Puri12/omarchy-kakaotalk-mac"><svg viewBox="0 0 16 16" aria-hidden="true"><path fill="currentColor" d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.013 8.013 0 0016 8c0-4.42-3.58-8-8-8z"/></svg> GitHub</a>
+    </nav>
+  </div>
+</header>
+
+<section class="page-head"><div class="shell"><p class="overline">붙여넣기</p><h1>스크린샷과 파일을 Ctrl+V로</h1><p class="lead">Wine 위의 카톡은 Omarchy 클립보드를 그대로 읽지 못합니다. 이미지와 파일을 각각 다른 방법으로 넘깁니다.</p></div></section>
+<div class="shell">
+  <div class="doc">
+    <main id="main">
+<section class="section reveal" id="screenshot" aria-labelledby="screenshot-h">
+<p class="overline">스크린샷</p>
+<h2 id="screenshot-h">스크린샷 붙여넣기</h2>
+<p class="intro">Omarchy 스크린샷은 클립보드에 <code>image/png</code>만 올리는데, Wine은 이 형식을 Windows 앱이 찾지 않는 이름으로만 넘깁니다.</p>
+<ul class="plain">
+<li>카톡 창에 포커스가 가면 <code>kakaotalk-clipbridge</code>가 PNG를 BMP로 바꿔 <strong>Wine 안에서 Windows 클립보드(<code>CF_DIB</code>)에 직접</strong> 넣습니다. 큰 이미지가 XWayland를 거치지 않습니다.</li>
+<li>카톡을 보는 중에 찍은 스크린샷도 클립보드 변화를 감시해 처리합니다. 3450×2224 기준 약 0.3초.</li>
+<li>카톡에서 포커스가 빠지면 원래 PNG로 되돌려 다른 앱이 큰 BMP를 끌어가지 않게 합니다.</li>
+</ul>
+<p>확인(작은 테스트 이미지로 안전하게, 클립보드가 테스트 이미지로 바뀝니다):</p>
+<figure class="code"><figcaption>bash</figcaption><pre tabindex="0"><code>tools/clipboard-selftest.sh   # 종료 코드 0, "PNG restored intact"</code></pre></figure>
+<p class="note">자세한 원리와 실패한 방식: <a href="https://github.com/Puri12/omarchy-kakaotalk-mac/blob/main/docs/clipboard-paste.md">docs/clipboard-paste.md</a></p>
+</section><section class="section reveal" id="files" aria-labelledby="files-h">
+<p class="overline">파일</p>
+<h2 id="files-h">파일·동영상 붙여넣기</h2>
+<p class="intro">파일 관리자에서 복사한 파일을 카톡에서 Ctrl+V 하면 원래는 경로가 글자로 붙습니다.</p>
+<ul class="plain">
+<li>원인: 카톡의 Ctrl+V는 클립보드에서 이미지, 텍스트, 카톡 전용 형식만 찾고 <strong>파일 목록(<code>CF_HDROP</code>)은 조회하지 않습니다</strong>(Wine 클립보드 추적으로 확인).</li>
+<li>대신 채팅방 창은 파일 끌어다 놓기(<code>WM_DROPFILES</code>)를 받습니다.</li>
+<li>Hyprland가 카톡 창에 포커스가 있을 때만 Ctrl+V를 <code>kakaotalk-paste</code>에 연결합니다. 클립보드에 로컬 파일이 있으면 <code>dropfiles.py</code>가 채팅방에 드롭으로 넘기고, 카톡의 <strong>"파일 전송" 확인 창</strong>이 뜹니다.</li>
+<li>파일이 아니면 원래 Ctrl+V를 그대로 전달하므로 텍스트와 스크린샷 붙여넣기는 그대로입니다.</li>
+</ul>
+<p>확인(카톡 창을 클릭한 상태에서):</p>
+<figure class="code"><figcaption>bash</figcaption><pre tabindex="0"><code>hyprctl binds -j | jq -r '.[]|select(.key=="V" and .modmask==4)|.description'
+# KakaoTalk: paste copied files as attachments</code></pre></figure>
+<p class="note">자세한 원리와 실패한 방식: <a href="https://github.com/Puri12/omarchy-kakaotalk-mac/blob/main/docs/file-paste.md">docs/file-paste.md</a></p>
+</section><section class="section reveal" id="avoid" aria-labelledby="avoid-h">
+<p class="overline">주의</p>
+<h2 id="avoid-h">하지 말 것</h2>
+<div class="callout" role="note">
+          <svg viewBox="0 0 20 20" aria-hidden="true"><path d="M10 2.5 18 16.5H2L10 2.5Z" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/><path d="M10 8v3.8" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/><circle cx="10" cy="14" r="1" fill="currentColor"/></svg>
+          <div>
+            <strong>하지 말 것</strong>
+            <ul>
+              <li>수 MB 이상의 이미지를 Wayland 클립보드(<code>image/bmp</code>)로 X11 앱에 넘기면 Hyprland의 XWayland 창 관리자가 망가집니다. 모든 X11 창이 사라지고 다시 로그인해야 합니다.</li>
+              <li>X11 CLIPBOARD 소유권을 두고 Hyprland xwm과 경쟁해도 같은 고장이 납니다.</li>
+              <li>트레이 변환용 <code>xembedsniproxy</code>는 카톡 채팅창의 키보드 입력을 가로챘습니다.</li>
+            </ul>
+          </div>
+        </div>
+</section>
+<nav class="pager" aria-label="이전/다음 페이지"><a href="install.html"><small>이전</small><span>설치</span></a><a class="next" href="stability.html"><small>다음</small><span>안정성</span></a></nav>
+    </main>
+    <nav class="toc" aria-label="이 페이지 목차"><p>이 페이지</p><ol><li><a href="#screenshot">스크린샷</a></li><li><a href="#files">파일·동영상</a></li><li><a href="#avoid">하지 말 것</a></li></ol></nav>
+  </div>
+</div>
+
+<footer class="site-footer">
+  <div class="shell">
+    <p>카카오톡은 Kakao Corp.의 제품이며, 이 저장소와 사이트에는 카카오 소프트웨어가 포함되어 있지 않습니다.</p>
+    <p><a href="https://github.com/Puri12/omarchy-kakaotalk-mac">github.com/Puri12/omarchy-kakaotalk-mac</a></p>
+  </div>
+</footer>
+</body>
+</html>

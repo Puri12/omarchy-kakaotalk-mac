@@ -102,6 +102,28 @@ Base 4px. Tokens: --space-1 4px, --space-2 8px, --space-3 12px, --space-4 16px, 
 ### FAQ (troubleshooting)
 - `<details>` items separated by whisper bottom border; summary with + / − glyph; focus ring on summary.
 
+### Site nav (header)
+- Structure: brand, then `<nav class="site-nav">` with one link per page; current page has `aria-current="page"` (ink-alpha wash + 600 weight, no accent border).
+- Desktop ≥ 901px: inline row with GitHub link at the end. ≤ 900px: second row under the brand that scrolls horizontally (scroll owner: the nav), GitHub link moves next to the brand (`.header-gh`).
+- States: hover wash, focus-visible ring.
+
+### Page head
+- Subpages open with `.page-head` (warm surface band): overline, H1 (clamp 2–2.75rem, -0.03em), lead Body/lg in text-secondary. Only the index uses the hero with the layer stack.
+
+### Guide card (link card)
+- `<a class="card card--link">` with mono number, H3, description, "열기 →" line in accent-link.
+- States: hover lifts to the Deep shadow, active scale(0.99), focus-visible ring. Grid: `repeat(auto-fit, minmax(min(17rem,100%),1fr))`.
+
+### Pager
+- Previous/next page links at the end of each subpage: whisper-bordered boxes, hover wash, label in Overline.
+
+### Rules list
+- `<ol class="rules">`: numbered with a warm-surface square counter (not the marker yellow, reserved for install steps).
+
+### Code block — wrap variant
+- `.code--wrap` for prose-like blocks (the AI prompt): `white-space: pre-wrap` instead of horizontal scroll.
+- Copy buttons are injected by app.js into every `.code figcaption`; without JS the code still renders.
+
 ### TOC
 - Sticky list of section links, Body/sm. Current section: text-primary + 600 weight + ink-alpha wash rgba(0,0,0,0.05) background (no accent border). Others text-secondary.
 

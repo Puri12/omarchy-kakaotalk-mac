@@ -1,0 +1,175 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>설치 · omarchy-kakaotalk-mac</title>
+<meta name="description" content="Apple Silicon Omarchy에 ARM64EC Wine과 32비트 카카오톡을 설치하는 7단계와 명령.">
+<link rel="canonical" href="https://puri12.github.io/omarchy-kakaotalk-mac/install.html">
+<meta property="og:type" content="website">
+<meta property="og:title" content="설치 · omarchy-kakaotalk-mac">
+<meta property="og:description" content="Apple Silicon Omarchy에 ARM64EC Wine과 32비트 카카오톡을 설치하는 7단계와 명령.">
+<meta property="og:url" content="https://puri12.github.io/omarchy-kakaotalk-mac/install.html">
+<meta name="twitter:card" content="summary">
+<meta name="theme-color" content="#f6f5f4">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='8' fill='%23FEE500'/%3E%3Cpath d='M16 8c-5 0-9 3.1-9 7 0 2.5 1.7 4.7 4.2 5.9l-1 3.6 4.1-2.7c.6.1 1.1.1 1.7.1 5 0 9-3.1 9-7s-4-6.9-9-6.9z' fill='%23191919'/%3E%3C/svg%3E">
+<link rel="stylesheet" href="style.css">
+<script>document.documentElement.classList.add('js')</script>
+<script src="app.js" defer></script>
+</head>
+<body>
+<a class="skip" href="#main">본문으로 건너뛰기</a>
+
+<header class="site-header">
+  <div class="shell">
+    <a class="brand" href="index.html" aria-label="omarchy-kakaotalk-mac 처음으로">
+      <span class="brand__mark" aria-hidden="true"><svg viewBox="0 0 16 16"><path d="M8 2.5C4.4 2.5 1.5 4.8 1.5 7.6c0 1.8 1.2 3.4 3 4.3l-.7 2.6 3-2c.4.1.8.1 1.2.1 3.6 0 6.5-2.3 6.5-5S11.6 2.5 8 2.5z" fill="#191919"/></svg></span>
+      omarchy-kakaotalk-mac
+    </a>
+    <a class="header-gh" href="https://github.com/Puri12/omarchy-kakaotalk-mac"><svg viewBox="0 0 16 16" aria-hidden="true"><path fill="currentColor" d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.013 8.013 0 0016 8c0-4.42-3.58-8-8-8z"/></svg> GitHub</a>
+    <nav class="site-nav" aria-label="사이트">
+      <a href="index.html">개요</a>
+      <a href="install.html" aria-current="page">설치</a>
+      <a href="clipboard.html">붙여넣기</a>
+      <a href="stability.html">안정성</a>
+      <a href="troubleshooting.html">문제 해결</a>
+      <a href="ai.html">AI 설치</a>
+      <a class="gh" href="https://github.com/Puri12/omarchy-kakaotalk-mac"><svg viewBox="0 0 16 16" aria-hidden="true"><path fill="currentColor" d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.013 8.013 0 0016 8c0-4.42-3.58-8-8-8z"/></svg> GitHub</a>
+    </nav>
+  </div>
+</header>
+
+<section class="page-head"><div class="shell"><p class="overline">설치</p><h1>설치 순서</h1><p class="lead">저장소를 받은 폴더에서 차례로 실행합니다. 경로는 모두 홈 디렉터리 기준이고, 시스템 패키지는 설치하지 않습니다.</p></div></section>
+<div class="shell">
+  <div class="doc">
+    <main id="main">
+<section class="section reveal" id="before" aria-labelledby="before-h">
+<p class="overline">설치 전</p>
+<h2 id="before-h">준비물</h2>
+<ul class="plain">
+<li>Apple Silicon 맥 + Asahi Linux(16K 페이지) + Omarchy, Hyprland 0.56 이상(Lua 설정), fcitx5</li>
+<li>도구: <code>curl</code>, <code>bsdtar</code>, <code>python3</code>, <code>magick</code>, <code>wl-clipboard</code>, <code>jq</code>, <code>patch</code>, <code>make</code>, <code>gcc</code>, <code>bison</code>, <code>flex</code> — 모두 root 없이 사용자 홈에 설치됩니다</li>
+<li>디스크: Wine 약 2.3GB, 크래시 패치 빌드 중 임시로 약 1.2GB</li>
+</ul>
+<figure class="code"><figcaption>bash</figcaption><pre tabindex="0"><code>git clone https://github.com/Puri12/omarchy-kakaotalk-mac.git
+cd omarchy-kakaotalk-mac</code></pre></figure>
+</section><section class="section reveal" id="steps" aria-labelledby="install-h">
+        <p class="overline">단계</p>
+        <h2 id="install-h">단계별 명령</h2>
+        <ol class="steps">
+          <li class="step" id="step-1">
+            <span class="step__num" aria-hidden="true">1</span>
+            <div class="step__body">
+              <h3>ARM64EC Wine과 FEX DLL 받기</h3>
+              <p>COPR 저장소 메타데이터(<code>repodata/primary.xml</code>)에서 최신 빌드 경로를 찾습니다. 확인 당시 빌드는 <code>11027010-wine</code>(Wine 11.18-ec3)과 <code>11019142-fex-emu-wine</code>(2609-4)입니다. 시스템에는 설치하지 않습니다.</p>
+              <figure class="code"><figcaption>bash</figcaption><pre tabindex="0"><code>B=https://download.copr.fedorainfracloud.org/results/lacamar/wine-arm64ec/fedora-43-aarch64
+R=~/.local/share/kakaotalk-ec/root; mkdir -p $R ~/.cache/kakao-setup/ec &amp;&amp; cd ~/.cache/kakao-setup/ec
+for p in \
+  11027010-wine/wine-core-11.18-ec3.fc43.aarch64.rpm \
+  11027010-wine/wine-common-11.18-ec3.fc43.noarch.rpm \
+  11027010-wine/wine-filesystem-11.18-ec3.fc43.noarch.rpm \
+  11027010-wine/wine-pulseaudio-11.18-ec3.fc43.aarch64.rpm \
+  11027010-wine/wine-{tahoma,system,marlett,symbol,wingdings,small,courier,ms-sans-serif,arial}-winefonts-11.18-ec3.fc43.noarch.rpm \
+  11019142-fex-emu-wine/fex-emu-wine-2609-4.fc43.aarch64.rpm; do
+  curl -fsSLO $B/$p &amp;&amp; bsdtar -xf $(basename $p) -C $R
+done</code></pre></figure>
+              <p>Fedora의 alternatives 스크립트가 해 주던 링크를 직접 겁니다. 빠뜨리면 <code>could not exec wineserver</code>나 <code>d3d11.dll not found</code>가 납니다.</p>
+              <figure class="code"><figcaption>bash</figcaption><pre tabindex="0"><code>cd $R/usr/bin &amp;&amp; ln -sf wine64 wine &amp;&amp; ln -sf wineserver64 wineserver
+for d in aarch64-windows i386-windows; do
+  cd $R/usr/lib64/wine/$d
+  for f in wine-*.dll; do t=${f#wine-}; [ -e "$t" ] || ln -s "$f" "$t"; done
+done</code></pre></figure>
+              <p class="note"><code>$R/usr/bin/wine64 --version</code>이 <code>wine-11.18 (Staging)</code>을 출력하면 됩니다. 없는 라이브러리는 카메라용 <code>libgphoto2</code>뿐이라 무시해도 됩니다.</p>
+            </div>
+          </li>
+
+          <li class="step" id="step-2">
+            <span class="step__num" aria-hidden="true">2</span>
+            <div class="step__body">
+              <h3>실행 스크립트 설치</h3>
+              <figure class="code"><figcaption>bash</figcaption><pre tabindex="0"><code>install -m755 bin/kakaotalk bin/kakaotalk-clipbridge bin/kakaotalk-tray bin/kakaotalk-paste ~/.local/bin/</code></pre></figure>
+              <p><code>kakaotalk</code>은 <code>HODLL=libwow64fex.dll</code>(32비트 x86 코드를 FEX로 에뮬레이션)과 <code>winebth.sys</code> 차단을 설정합니다. <code>kakaotalk wine &lt;명령&gt;</code>으로 이 prefix의 Wine을 실행할 수 있습니다.</p>
+            </div>
+          </li>
+
+          <li class="step" id="step-3">
+            <span class="step__num" aria-hidden="true">3</span>
+            <div class="step__body">
+              <h3>prefix 생성과 설정 (카톡 설치 전에)</h3>
+              <figure class="code"><figcaption>bash</figcaption><pre tabindex="0"><code>K=~/.local/bin/kakaotalk
+$K wine wineboot -i
+$K wine reg import 'Z:\path\to\wine\korean.reg'   <span class="c"># 한국어 UI (0412). 설치 전에 넣어야 적용됨</span>
+$K wine winecfg /v win10
+$K wine reg add 'HKLM\System\CurrentControlSet\Services\winebth' /v Start /t REG_DWORD /d 4 /f
+$K wine reg add 'HKCU\Software\Wine\DllOverrides' /v winebth.sys /t REG_SZ /d '' /f
+$K wine reg add 'HKCU\Control Panel\Desktop' /v LogPixels /t REG_DWORD /d 192 /f   <span class="c"># 배율 2.0 기준</span>
+$K wine reg add 'HKCU\Software\Wine\Fonts' /v LogPixels /t REG_DWORD /d 192 /f
+cp /usr/share/fonts/noto-cjk/NotoSansCJK-{Regular,Bold}.ttc ~/.local/share/kakaotalk-ec/prefix/drive_c/windows/Fonts/
+python3 wine/fontlink.py /tmp/fontlink.reg &amp;&amp; $K wine reg import 'Z:\tmp\fontlink.reg'</code></pre></figure>
+              <p class="note"><code>syswow64</code>가 채워졌는지 확인합니다(파일 800개 이상). 비어 있으면 32비트 설치 파일이 <code>Application could not be started</code>로 실패합니다.</p>
+            </div>
+          </li>
+
+          <li class="step" id="step-4">
+            <span class="step__num" aria-hidden="true">4</span>
+            <div class="step__body">
+              <h3>카카오톡 설치 (32비트 클라이언트)</h3>
+              <figure class="code"><figcaption>bash</figcaption><pre tabindex="0"><code>curl -fsSL -o /tmp/KakaoTalk_Setup.exe https://app-pc.kakaocdn.net/talk/win32/KakaoTalk_Setup.exe
+$K wine /tmp/KakaoTalk_Setup.exe /S</code></pre></figure>
+              <p class="note"><code>C:\Program Files (x86)\Kakao\KakaoTalk\KakaoTalk.exe</code>가 생기면 됩니다. 64비트판은 이 환경에서 동작하지 않습니다.</p>
+            </div>
+          </li>
+
+          <li class="step" id="step-5">
+            <span class="step__num" aria-hidden="true">5</span>
+            <div class="step__body">
+              <h3>클립보드 도우미용 Python</h3>
+              <figure class="code"><figcaption>bash</figcaption><pre tabindex="0"><code>D=~/.local/share/kakaotalk-ec/py; mkdir -p $D &amp;&amp; cd $D
+curl -fsSL -o py.zip https://www.python.org/ftp/python/3.13.15/python-3.13.15-embed-arm64.zip &amp;&amp; bsdtar -xf py.zip &amp;&amp; rm py.zip
+cp /path/to/wine/setclip.py /path/to/wine/dropfiles.py $D/</code></pre></figure>
+              <p class="note">ARM64 PE라서 Wine에서 에뮬레이션 없이 네이티브로 실행됩니다.</p>
+            </div>
+          </li>
+
+          <li class="step" id="step-6">
+            <span class="step__num" aria-hidden="true">6</span>
+            <div class="step__body">
+              <h3>데스크톱 연동</h3>
+              <figure class="code"><figcaption>bash</figcaption><pre tabindex="0"><code>cp "$HOME/.local/share/kakaotalk-ec/prefix/drive_c/Program Files (x86)/Kakao/KakaoTalk/skin/default/image/2.0/x2.0/setting_img_talkappicon.png" ~/.local/share/icons/kakaotalk.png
+cp config/applications/kakaotalk.desktop ~/.local/share/applications/
+install -Dm644 config/fcitx5/xim.conf ~/.config/fcitx5/conf/xim.conf &amp;&amp; systemctl --user restart omarchy-fcitx5.service
+cat config/hypr/hyprland-kakaotalk.lua &gt;&gt; ~/.config/hypr/hyprland.lua
+cat config/hypr/autostart-kakaotalk.lua &gt;&gt; ~/.config/hypr/autostart.lua
+hyprctl reload &amp;&amp; hyprctl configerrors</code></pre></figure>
+              <p><code>~/.config/omarchy/shell.json</code>의 <code>{"id": "omarchy.tray"}</code> 항목을 <code>config/omarchy/shell-tray-entry.json</code> 내용으로 바꾸고 <code>omarchy restart shell</code>을 실행합니다.</p>
+              <p class="note"><code>.desktop</code>의 <code>Exec=kakaotalk</code>은 <code>~/.local/bin</code>이 세션 <code>PATH</code>에 있다고 가정합니다(Omarchy 기본값).</p>
+            </div>
+          </li>
+        <li class="step" id="step-7">
+            <span class="step__num" aria-hidden="true">7</span>
+            <div class="step__body">
+              <h3>입력창 크래시 패치 (riched20)</h3>
+              <p>기본 Wine의 riched20은 채팅 중 가끔 단정문(<code>MEPF_REWRAP</code>)으로 카톡을 통째로 종료합니다. 패치한 32비트 <code>riched20.dll</code>을 root 없이 교차 빌드해 바꿉니다.</p>
+              <figure class="code"><figcaption>bash</figcaption><pre tabindex="0"><code>tools/build-riched20.sh      # 약 110MB 다운로드, 빌드 후 정리
+tools/riched20-selftest.sh   # 마지막 줄이 PASS면 적용됨
+~/.local/bin/kakaotalk kill &amp;&amp; kakaotalk</code></pre></figure>
+              <p class="note">원본은 보관되며 <code>tools/build-riched20.sh --restore</code>로 되돌립니다. 자세한 내용은 <a href="stability.html#crash">안정성</a> 페이지에 있습니다.</p>
+            </div>
+          </li>
+        </ol>
+      </section>
+
+<nav class="pager" aria-label="이전/다음 페이지"><a href="index.html"><small>이전</small><span>개요</span></a><a class="next" href="clipboard.html"><small>다음</small><span>붙여넣기</span></a></nav>
+    </main>
+    <nav class="toc" aria-label="이 페이지 목차"><p>이 페이지</p><ol><li><a href="#before">준비물</a></li><li><a href="#step-1">1. Wine과 FEX</a></li><li><a href="#step-2">2. 실행 스크립트</a></li><li><a href="#step-3">3. prefix 설정</a></li><li><a href="#step-4">4. 카카오톡 설치</a></li><li><a href="#step-5">5. 도우미 Python</a></li><li><a href="#step-6">6. 데스크톱 연동</a></li><li><a href="#step-7">7. 크래시 패치</a></li></ol></nav>
+  </div>
+</div>
+
+<footer class="site-footer">
+  <div class="shell">
+    <p>카카오톡은 Kakao Corp.의 제품이며, 이 저장소와 사이트에는 카카오 소프트웨어가 포함되어 있지 않습니다.</p>
+    <p><a href="https://github.com/Puri12/omarchy-kakaotalk-mac">github.com/Puri12/omarchy-kakaotalk-mac</a></p>
+  </div>
+</footer>
+</body>
+</html>

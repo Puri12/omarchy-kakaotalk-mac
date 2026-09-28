@@ -10,6 +10,8 @@ Apple Silicon 맥(Asahi Linux)에서 돌아가는 Omarchy에서 **Windows용 카
 
 웹 가이드: https://puri12.github.io/omarchy-kakaotalk-mac/ (`site/`, GitHub Actions로 배포)
 
+AI 코딩 에이전트(Claude Code, Codex 등)에게 설치를 맡길 때는 [AI-SETUP.md](AI-SETUP.md)를 읽게 한다.
+
 ---
 
 ## 결론 요약
@@ -36,6 +38,7 @@ wine/setclip.py             Wine 안에서 BMP를 Windows 클립보드(CF_DIB)�
 wine/dropfiles.py           Wine 안에서 채팅방 창에 파일을 끌어다 놓기(WM_DROPFILES)로 넘기는 도우미 → ~/.local/share/kakaotalk-ec/py/
 wine/korean.reg             한국어 UI(0412)와 한글 글꼴 치환 (설치 전에 넣어야 함)
 wine/fontlink.py            한글 폰트 링크 .reg 생성기 (입력창 한글 네모 방지)
+wine/riched20-cursor-coords-rewrap.patch  카톡이 스스로 종료되는 riched20 단정문 수정 (Wine 11.18)
 config/hypr/hyprland-kakaotalk.lua   창 규칙 → ~/.config/hypr/hyprland.lua 끝에 추가
 config/hypr/autostart-kakaotalk.lua  자동 시작 → ~/.config/hypr/autostart.lua에 추가
 config/fcitx5/xim.conf               On-The-Spot 한글 조합 → ~/.config/fcitx5/conf/
@@ -44,6 +47,12 @@ config/applications/kakaotalk.desktop 앱 메뉴 항목 → ~/.local/share/appli
 docs/clipboard-paste.md     스크린샷 붙여넣기 원리, 실패한 방식, 확인과 복구 방법
 docs/file-paste.md          파일·동영상 붙여넣기 원리 (카톡 Ctrl+V가 파일을 안 찾는 이유), 실패한 방식
 tools/clipboard-selftest.sh 붙여넣기 브리지 자동 점검 (작은 이미지로 안전하게)
+tools/build-riched20.sh     패치한 32비트 riched20.dll 빌드·설치 (root 불필요, --restore로 원복)
+tools/riched20-selftest.sh  riched20 단정문 재현 테스트 (PASS/FAIL)
+tools/riched20-repro.py     재현 테스트 본체 (32비트 Windows Python에서 실행)
+docs/riched20-crash.md      카톡이 스스로 종료되는 원인, 재현, 패치, 실패한 방식
+docs/trackpad-typing.md     카톡에서 타이핑 중 트랙패드 탭 막기
+AI-SETUP.md                 AI 에이전트용 설치 안내 (확인 조건과 안전 규칙 포함)
 ```
 
 실행에 필요한 경로:
@@ -148,6 +157,18 @@ hyprctl reload && hyprctl configerrors
 
 `.desktop`의 `Exec=kakaotalk`은 `~/.local/bin`이 세션 `PATH`에 있다고 가정한다(Omarchy 기본값). `Icon=kakaotalk`은 `~/.local/share/icons/kakaotalk.png`로 찾아진다.
 
+### 7. 입력창 크래시 패치 (riched20)
+
+기본 Wine의 riched20은 채팅 중 가끔 단정문(`MEPF_REWRAP`)으로 카톡을 통째로 종료한다. 패치한 32비트 `riched20.dll`로 바꾼다.
+
+```bash
+tools/build-riched20.sh      # llvm-mingw로 교차 빌드 후 설치 (약 110MB 다운로드, 빌드 후 정리)
+tools/riched20-selftest.sh   # PASS면 적용됨
+~/.local/bin/kakaotalk kill && kakaotalk
+```
+
+Wine RPM을 새로 풀었다면 다시 실행한다. 자세한 내용은 [docs/riched20-crash.md](docs/riched20-crash.md)에 있다.
+
 ---
 
 ## 구성 요소 설명
@@ -183,6 +204,22 @@ fcitx5의 기본값(`UseOnTheSpot=False`)에서는 X11 앱에서 조합 중인 �
 
 자세한 내용은 [docs/file-paste.md](docs/file-paste.md)에 있다.
 
+### 타이핑 중 트랙패드 탭 막기 (`hyprland-kakaotalk.lua`)
+
+- Asahi 트랙패드는 "타이핑 중 비활성화"만으로는 탭이 막히지 않는다. Omarchy 기본값은 그래서 탭 클릭을 끈다.
+- 탭 클릭을 켜 두었다면, 카톡 창에서 키를 누르는 동안 탭 클릭을 끄고 마지막 입력 0.7초 뒤 다시 켠다. 물리 클릭은 계속 된다.
+- 탭 클릭을 끈 채 쓴다면 이 부분을 빼야 한다(0.7초 뒤 켜기 때문).
+
+자세한 내용은 [docs/trackpad-typing.md](docs/trackpad-typing.md)에 있다.
+
+### 입력창 크래시 패치 (`riched20-cursor-coords-rewrap.patch`)
+
+- Wine의 `ITextRange::SetText`는 글자를 넣고 줄바꿈을 다시 하지 않는다. 그 직후 커서를 옮기거나 포커스를 받으면 커서 위치 계산의 `assert`가 실패해 카톡이 종료된다(종료 코드 3).
+- 패치는 단정문 대신 밀린 줄바꿈을 먼저 한다. 32비트 테스트로 재현했고, 기본 Wine은 FAIL, 패치본은 PASS다.
+- Windows 7 원본 `msftedit.dll`로 바꾸는 방법은 카톡이 시작 직후 종료해서 쓸 수 없었다.
+
+자세한 내용은 [docs/riched20-crash.md](docs/riched20-crash.md)에 있다.
+
 ### 바 아이콘 (`kakaotalk-tray`)
 
 - Wine의 트레이 아이콘은 XEmbed 방식이라 Omarchy 바가 표시하지 못한다.
@@ -195,6 +232,7 @@ fcitx5의 기본값(`UseOnTheSpot=False`)에서는 X11 앱에서 조합 중인 �
 - 카톡 창: 불투명(`force_rgbx`, opacity 1)
 - Wine의 빈 `explorer.exe` 창: 숨김 (minpeter 가이드에서 가져옴)
 - 카톡 창에 포커스가 있을 때만 Ctrl+V → `kakaotalk-paste`
+- 카톡 창에서 타이핑하는 동안 트랙패드 탭 클릭 끄기
 
 ### minpeter 가이드 항목 대응
 
@@ -214,6 +252,8 @@ fcitx5의 기본값(`UseOnTheSpot=False`)에서는 X11 앱에서 조합 중인 �
 |---|---|
 | 카톡 창이 안 뜨고 프로세스만 있음 | XWayland xwm이 고장난 상태. 간단한 X11 창도 안 뜨면 확실하다. `omarchy system logout` 후 다시 로그인한다. Xwayland를 `kill`해도 재시작되지 않는다 |
 | 카톡 창이 사라짐 | 트레이로 숨은 것. 바 아이콘을 누르거나 `kakaotalk`을 다시 실행한다 |
+| 카톡이 통째로 종료되고 로그에 `MEPF_REWRAP` | 기본 riched20의 단정문. `tools/build-riched20.sh`로 패치하고 `tools/riched20-selftest.sh`로 확인 |
+| 채팅 중 커서가 튀거나 다른 창이 클릭됨 | 손바닥 탭. `hyprland-kakaotalk.lua`의 타이핑 중 탭 막기 부분이 들어갔는지 확인 |
 | 로그아웃/로그인 뒤 wireplumber CPU 100% | wireplumber 0.5.17의 루프 버그(`wp_proxy_get_bound_id` 이후). `systemctl --user kill --signal=KILL wireplumber && systemctl --user restart wireplumber` |
 | 바에 아이콘이 안 보임 | `omarchy restart shell` |
 | `pkill -f` 쓸 때 주의 | 패턴이 자기 셸의 명령줄에도 매칭돼 셸 자신이 죽는다. `[k]akaotalk` 형태로 쓴다 |
@@ -221,9 +261,10 @@ fcitx5의 기본값(`UseOnTheSpot=False`)에서는 X11 앱에서 조합 중인 �
 ## 한계
 
 - 64비트 클라이언트(`KakaoTalkUI.exe`)는 사용할 수 없다 (Themida).
-- 통화, 파일 전송 전반, 알림은 충분히 검증하지 않았다.
+- 통화와 알림은 충분히 검증하지 않았다. 이 환경의 32비트 카톡은 새 메시지 알림 창을 만들지 않았다.
+- riched20 패치는 Wine 11.18 기준이다. 다른 버전은 `WINE_VERSION`을 맞춰 다시 빌드해야 한다.
 - 바 아이콘에는 안 읽은 메시지 표시가 없다.
 
 ## 라이선스
 
-이 저장소의 스크립트와 문서는 MIT([LICENSE](LICENSE))로 배포된다. 예외로 `wine/fontlink.py`는 [chaotic-ground/kakaotalk-on-wine](https://github.com/chaotic-ground/kakaotalk-on-wine)의 `link_fallback_fonts`를 고친 것이라 원본을 따라 **GPL-3.0-or-later**다. `wine/korean.reg`의 한국어 UI 레지스트리 값도 같은 저장소의 설명을 참고했다. winebth 차단과 빈 창 숨김 규칙 같은 일부 설정은 [minpeter/omarchy-kakaotalk](https://github.com/minpeter/omarchy-kakaotalk)을 참고했다. 카카오톡은 Kakao Corp.의 제품이며, 이 저장소에는 카카오 소프트웨어가 포함되어 있지 않다.
+이 저장소의 스크립트와 문서는 MIT([LICENSE](LICENSE))로 배포된다. 예외로 `wine/fontlink.py`는 [chaotic-ground/kakaotalk-on-wine](https://github.com/chaotic-ground/kakaotalk-on-wine)의 `link_fallback_fonts`를 고친 것이라 원본을 따라 **GPL-3.0-or-later**다. `wine/korean.reg`의 한국어 UI 레지스트리 값도 같은 저장소의 설명을 참고했다. winebth 차단과 빈 창 숨김 규칙 같은 일부 설정은 [minpeter/omarchy-kakaotalk](https://github.com/minpeter/omarchy-kakaotalk)을 참고했다. `wine/riched20-cursor-coords-rewrap.patch`는 Wine 소스를 고친 것이라 Wine과 같은 **LGPL-2.1-or-later**다. 카카오톡은 Kakao Corp.의 제품이며, 이 저장소에는 카카오 소프트웨어가 포함되어 있지 않다.

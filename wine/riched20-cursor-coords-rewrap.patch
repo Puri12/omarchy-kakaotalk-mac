@@ -1,0 +1,16 @@
+--- a/dlls/riched20/caret.c
++++ b/dlls/riched20/caret.c
+@@ -229,7 +229,12 @@
+   int run_x;
+   HDC hdc = ITextHost_TxGetDC( editor->texthost );
+ 
+-  assert(~para->nFlags & MEPF_REWRAP);
++  /* Callers such as ITextRange::SetText + Select or WM_SETFOCUS can ask for the caret before
++   * the edited paragraph was rewrapped; wrap it now instead of asserting (and aborting). */
++  if (para->nFlags & MEPF_REWRAP)
++    wrap_marked_paras_dc( editor, hdc, FALSE );
++  run = cursor->run;
++  size_run = run;
+ 
+   row = row_from_cursor( cursor );
+ 
