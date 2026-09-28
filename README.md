@@ -55,6 +55,7 @@ tools/riched20-selftest.sh  riched20 단정문 재현 테스트 (PASS/FAIL)
 tools/riched20-repro.py     재현 테스트 본체 (32비트 Windows Python에서 실행)
 docs/riched20-crash.md      카톡이 스스로 종료되는 원인, 재현, 패치, 실패한 방식
 docs/trackpad-typing.md     카톡에서 타이핑 중 트랙패드 탭 막기
+docs/emoji.md               이모지·기호가 네모(☒)로 보이는 문제, 고친 범위와 남은 한계
 docs/notifications.md       새 메시지 알림 원리와 한계
 tools/check-site-links.py   웹 가이드(site/)의 저장소 링크 검사
 .github/workflows/check.yml CI: bash -n, shellcheck, py_compile, luac -p, 링크 검사
@@ -143,6 +144,8 @@ $K wine reg add 'HKCU\Software\Wine\DllOverrides' /v winebth.sys /t REG_SZ /d ''
 $K wine reg add 'HKCU\Control Panel\Desktop' /v LogPixels /t REG_DWORD /d 192 /f   # 배율 2.0 기준
 $K wine reg add 'HKCU\Software\Wine\Fonts' /v LogPixels /t REG_DWORD /d 192 /f
 cp /usr/share/fonts/noto-cjk/NotoSansCJK-{Regular,Bold}.ttc ~/.local/share/kakaotalk-ec/prefix/drive_c/windows/Fonts/
+cp /usr/share/fonts/noto/NotoSansSymbols{,2}-Regular.ttf ~/.local/share/kakaotalk-ec/prefix/drive_c/windows/Fonts/   # 기호·점자 폴백
+curl -fsSL -o ~/.local/share/kakaotalk-ec/prefix/drive_c/windows/Fonts/NotoEmoji-Regular.ttf 'https://github.com/google/fonts/raw/main/ofl/notoemoji/NotoEmoji%5Bwght%5D.ttf'   # 흑백 이모지 폴백
 python3 wine/fontlink.py /tmp/fontlink.reg && $K wine reg import 'Z:\tmp\fontlink.reg'
 ```
 

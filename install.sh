@@ -86,6 +86,8 @@ check3() {
   grep -qF '"LogPixels"=dword:000000c0' "$PREFIX/user.reg" 2>/dev/null || miss "LogPixels 192 missing"
   [[ -f $PREFIX/drive_c/windows/Fonts/NotoSansCJK-Regular.ttc ]] || miss "Noto CJK fonts not copied"
   grep -qF 'FontLink\\SystemLink]' "$PREFIX/system.reg" 2>/dev/null || miss "fontlink.reg not imported"
+  [[ -f $PREFIX/drive_c/windows/Fonts/NotoEmoji-Regular.ttf ]] || miss "emoji/symbol fallback fonts not copied"
+  grep -qF 'NotoEmoji-Regular.ttf' "$PREFIX/system.reg" 2>/dev/null || miss "fontlink.reg lacks the emoji fallback"
   ((${#MISSING[@]} == 0))
 }
 
@@ -220,6 +222,17 @@ run2() {
   install -Dm755 -t "$BIN" "$REPO"/bin/kakaotalk*
 }
 
+# Emoji/symbol fallback fonts linked by wine/fontlink.py (monochrome: Wine's GDI cannot draw color emoji).
+install_symbol_fonts() {
+  local fonts="$PREFIX/drive_c/windows/Fonts" f
+  for f in NotoSansSymbols-Regular.ttf NotoSansSymbols2-Regular.ttf; do
+    [[ -f $NOTO/$f ]] || die "$NOTO/$f not found; install noto-fonts and rerun"
+    install -m644 "$NOTO/$f" "$fonts/"
+  done
+  [[ -f $fonts/NotoEmoji-Regular.ttf ]] \
+    || curl -fsSL -o "$fonts/NotoEmoji-Regular.ttf" 'https://github.com/google/fonts/raw/main/ofl/notoemoji/NotoEmoji%5Bwght%5D.ttf'
+}
+
 run3() {
   [[ -f $NOTO/NotoSansCJK-Regular.ttc && -f $NOTO/NotoSansCJK-Bold.ttc ]] \
     || die "$NOTO/NotoSansCJK-{Regular,Bold}.ttc not found; install the Noto CJK fonts (noto-fonts-cjk) and rerun"
@@ -232,6 +245,7 @@ run3() {
   K reg add 'HKCU\Control Panel\Desktop' /v LogPixels /t REG_DWORD /d 192 /f   # display scale 2.0
   K reg add 'HKCU\Software\Wine\Fonts' /v LogPixels /t REG_DWORD /d 192 /f
   install -m644 "$NOTO"/NotoSansCJK-{Regular,Bold}.ttc "$PREFIX/drive_c/windows/Fonts/"
+  install_symbol_fonts
   tmp=$(mktemp --suffix=.reg)
   python3 "$REPO/wine/fontlink.py" "$tmp"
   K reg import "$(winpath "$tmp")"
