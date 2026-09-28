@@ -147,7 +147,7 @@ setsid -f ~/.local/bin/kakaotalk
 | 크래시 패치 | `tools/riched20-selftest.sh` | `PASS` |
 | 설치 전체 | `./install.sh --check` | 모든 단계 `[ok]`, 종료 코드 0 |
 | 상태 점검 | `~/.local/bin/kakaotalk check` (카톡 실행 때마다 자동. 로그를 1MiB 넘으면 마지막 2000줄로 줄이고, 기본 riched20이 돌아왔으면 같은 Wine 버전일 때만 패치본을 다시 넣는다) | 오류 없이 끝남. 로그에 Wine 버전 경고가 있으면 2-7을 다시 한다 |
-| 새 메시지 알림 | `pgrep -f '[k]akaotalk-notify'` | PID가 나옴. 실제 알림은 사용자가 다른 기기에서 **나와의 채팅**에 보내 보게 한다(카톡 창에서 포커스를 뺀 상태) |
+| 새 메시지 알림 | `pgrep -f '[k]akaotalk-notify'` | PID가 나옴. 실제 알림은 사용자가 다른 기기에서 **나와의 채팅**에 보내 보게 한다. 제목이 방 이름이고 `~/.local/state/kakaotalk-notify.log`에 `popup: notified (room)`이 남으면 된다 |
 | 로그 | `tail ~/.local/state/kakaotalk.log` | `Assertion failed` 없음 |
 
 실제 파일 첨부는 사용자가 **나와의 채팅**에서 직접 해 보게 한다(규칙 2). "파일 전송" 확인 창이 뜨면 성공이다.
@@ -172,4 +172,4 @@ setsid -f ~/.local/bin/kakaotalk
 - 바꾼 사용자 파일과 백업 위치
 - 사용자가 직접 해야 할 일(로그인, 나와의 채팅에서 파일 첨부 시험)
 - 마지막 `./install.sh --check` 출력과 종료 코드
-- 알려진 한계: 64비트 클라이언트 불가, 알림은 보낸 사람과 방 이름 없는 `새 메시지`뿐, 바 아이콘에 안 읽음 표시 없음
+- 알려진 한계: 64비트 클라이언트 불가, 알림은 방 이름과 `새 메시지`뿐(보낸 사람·내용 없음), 바 아이콘에 안 읽음 표시 없음

@@ -134,8 +134,19 @@ case "${1:-}" in
     # such as kakaotalk-tray discard output, so an exit would otherwise leave no trace.
     mkdir -p "$(dirname "$log")"
     echo "=== $(date '+%F %T') start (pid $$)" >>"$log"
-    status=0
-    wine "$exe" 2>>"$log" || status=$?
+    relay="$(dirname "$0")/kakaotalk-notify"
+    if [[ -z ${KAKAO_WINEDEBUG:-} && -x $relay ]]; then
+      # kakaotalk-notify titles its notifications with the room name it picks out of the popup's
+      # text; the relay passes other stderr lines to the log and never writes the traced text.
+      export WINEDEBUG=-all,+text
+      set +e
+      wine "$exe" 2>&1 >/dev/null | "$relay" relay "$log"
+      status=${PIPESTATUS[0]}
+      set -e
+    else
+      status=0
+      wine "$exe" 2>>"$log" || status=$?
+    fi
     echo "=== $(date '+%F %T') exit $status (pid $$)" >>"$log"
     exit "$status" ;;
   *) echo "usage: kakaotalk [check|wine ARGS|kill]" >&2; exit 2 ;;
