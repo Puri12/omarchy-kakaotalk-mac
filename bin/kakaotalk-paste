@@ -1,0 +1,67 @@
+#!/usr/bin/env python3
+"""Ctrl+V for KakaoTalk (Wine): paste files copied in a file manager as attachments.
+
+KakaoTalk's Ctrl+V ignores files on the clipboard and pastes their paths as text, but its chat
+windows accept file drops. Hyprland binds Ctrl+V to this script only while a KakaoTalk window is
+focused (~/.config/hypr/hyprland.lua). If the clipboard holds local files (text/uri-list), they are
+dropped onto the focused chat window (dropfiles.py inside the Wine prefix); otherwise, or if the
+focused window takes no drops, the real Ctrl+V is passed on, so text and images paste as before.
+"""
+import os
+import subprocess
+import sys
+import time
+from urllib.parse import unquote, urlsplit
+
+KAKAOTALK = os.path.expanduser("~/.local/bin/kakaotalk")
+PY_DIR = os.path.expanduser("~/.local/share/kakaotalk-ec/py")
+
+
+def log(msg):
+    print(f"{time.strftime('%H:%M:%S')} kakaotalk-paste: {msg}", file=sys.stderr, flush=True)
+
+
+def paste(*args):
+    return subprocess.run(["wl-paste", *args], capture_output=True, timeout=10).stdout
+
+
+def local_files():
+    """Paths on the clipboard if it holds only existing local files, else None."""
+    if "text/uri-list" not in paste("--list-types").decode(errors="replace").split():
+        return None
+    uris = [line.strip() for line in paste("--no-newline", "--type", "text/uri-list")
+            .decode(errors="replace").splitlines() if line.strip() and not line.startswith("#")]
+    paths = []
+    for uri in uris:
+        parts = urlsplit(uri)
+        if parts.scheme != "file" or parts.netloc not in ("", "localhost"):
+            return None
+        paths.append(unquote(parts.path))
+    return paths if paths and all(os.path.isfile(p) for p in paths) else None
+
+
+def send_ctrl_v():
+    # Synthetic keys go straight to the focused window without triggering this binding again.
+    for state in ("down", "up"):
+        subprocess.run(["hyprctl", "dispatch",
+                        f'hl.dsp.send_key_state({{ mods = "CTRL", key = "V", state = "{state}" }})'],
+                       capture_output=True, timeout=5)
+        time.sleep(0.05)
+
+
+def main():
+    paths = local_files()
+    if paths:
+        result = subprocess.run([KAKAOTALK, "wine", f"Z:{PY_DIR}/python.exe", "-X", "utf8",
+                                 f"Z:{PY_DIR}/dropfiles.py", *paths],
+                                capture_output=True, text=True, timeout=60)
+        if result.returncode == 0:
+            log(f"dropped {len(paths)} file(s)")
+            return
+        if result.returncode != 3:
+            log(f"drop failed ({result.returncode}): {result.stderr.strip()[-300:]}")
+    send_ctrl_v()
+
+
+if __name__ == "__main__":
+    main()

@@ -29,7 +29,9 @@ Wine은 [lacamar/wine-arm64ec](https://copr.fedorainfracloud.org/coprs/lacamar/w
 bin/kakaotalk               실행 스크립트 → ~/.local/bin/
 bin/kakaotalk-clipbridge    스크린샷 붙여넣기 브리지 → ~/.local/bin/  (로그인 시 자동 시작)
 bin/kakaotalk-tray          바의 카톡 아이콘 (StatusNotifierItem) → ~/.local/bin/  (로그인 시 자동 시작)
+bin/kakaotalk-paste         카톡 창의 Ctrl+V: 복사한 파일을 첨부로 넘김 → ~/.local/bin/
 wine/setclip.py             Wine 안에서 BMP를 Windows 클립보드(CF_DIB)에 넣는 도우미 → ~/.local/share/kakaotalk-ec/py/
+wine/dropfiles.py           Wine 안에서 채팅방 창에 파일을 끌어다 놓기(WM_DROPFILES)로 넘기는 도우미 → ~/.local/share/kakaotalk-ec/py/
 wine/korean.reg             한국어 UI(0412)와 한글 글꼴 치환 (설치 전에 넣어야 함)
 wine/fontlink.py            한글 폰트 링크 .reg 생성기 (입력창 한글 네모 방지)
 config/hypr/hyprland-kakaotalk.lua   창 규칙 → ~/.config/hypr/hyprland.lua 끝에 추가
@@ -38,6 +40,7 @@ config/fcitx5/xim.conf               On-The-Spot 한글 조합 → ~/.config/fci
 config/omarchy/shell-tray-entry.json 바 트레이에 아이콘 고정 → ~/.config/omarchy/shell.json의 omarchy.tray 항목
 config/applications/kakaotalk.desktop 앱 메뉴 항목 → ~/.local/share/applications/
 docs/clipboard-paste.md     스크린샷 붙여넣기 원리, 실패한 방식, 확인과 복구 방법
+docs/file-paste.md          파일·동영상 붙여넣기 원리 (카톡 Ctrl+V가 파일을 안 찾는 이유), 실패한 방식
 tools/clipboard-selftest.sh 붙여넣기 브리지 자동 점검 (작은 이미지로 안전하게)
 ```
 
@@ -46,7 +49,7 @@ tools/clipboard-selftest.sh 붙여넣기 브리지 자동 점검 (작은 이미�
 ```
 ~/.local/share/kakaotalk-ec/root     RPM을 푼 ARM64EC Wine (약 2.3GB)
 ~/.local/share/kakaotalk-ec/prefix   Wine prefix
-~/.local/share/kakaotalk-ec/py       Windows ARM64 embeddable Python + setclip.py
+~/.local/share/kakaotalk-ec/py       Windows ARM64 embeddable Python + setclip.py + dropfiles.py
 ~/.local/share/icons/kakaotalk.png   바와 메뉴 아이콘 (카톡 설치 폴더에서 복사)
 ```
 
@@ -87,7 +90,7 @@ done
 ### 2. 실행 스크립트 설치
 
 ```bash
-install -m755 bin/kakaotalk bin/kakaotalk-clipbridge bin/kakaotalk-tray ~/.local/bin/
+install -m755 bin/kakaotalk bin/kakaotalk-clipbridge bin/kakaotalk-tray bin/kakaotalk-paste ~/.local/bin/
 ```
 
 `kakaotalk`은 `HODLL=libwow64fex.dll`(32비트 x86 코드를 FEX로 에뮬레이션)과 `winebth.sys` 차단을 설정한다. `kakaotalk wine <명령>`으로 이 prefix의 Wine을 실행할 수 있다.
@@ -123,7 +126,7 @@ $K wine /tmp/KakaoTalk_Setup.exe /S
 ```bash
 D=~/.local/share/kakaotalk-ec/py; mkdir -p $D && cd $D
 curl -fsSL -o py.zip https://www.python.org/ftp/python/3.13.15/python-3.13.15-embed-arm64.zip && bsdtar -xf py.zip && rm py.zip
-cp /path/to/wine/setclip.py $D/
+cp /path/to/wine/setclip.py /path/to/wine/dropfiles.py $D/
 ```
 
 ARM64 PE라서 Wine에서 에뮬레이션 없이 네이티브로 실행된다.
@@ -170,6 +173,14 @@ fcitx5의 기본값(`UseOnTheSpot=False`)에서는 X11 앱에서 조합 중인 �
 - X11 CLIPBOARD 소유권을 두고 Hyprland xwm과 경쟁해서도 안 된다. 같은 고장이 난다.
 - `text/uri-list` 방식도 안 된다. `wl-copy`가 `text/plain` 별칭을 같이 올려서 카톡이 파일 경로를 글자로 붙여넣는다.
 
+### 파일·동영상 붙여넣기 (`kakaotalk-paste` + `dropfiles.py`)
+
+- 카톡의 Ctrl+V는 클립보드에서 이미지, 텍스트, 카톡 전용 형식만 찾고 **파일(`CF_HDROP`)은 찾지 않는다.** 그래서 복사한 파일은 경로 글자로 붙는다.
+- 채팅방 창은 파일 끌어다 놓기(`WM_DROPFILES`)는 받는다. 그래서 카톡 창에 포커스가 있을 때만 Ctrl+V를 `kakaotalk-paste`에 바인딩하고, 클립보드에 로컬 파일이 있으면 채팅방에 드롭으로 넘긴다. 카톡의 "파일 전송" 확인 창이 뜬다.
+- 파일이 아니면 원래 Ctrl+V를 그대로 전달한다. 텍스트와 스크린샷 붙여넣기는 그대로다.
+
+자세한 내용은 [docs/file-paste.md](docs/file-paste.md)에 있다.
+
 ### 바 아이콘 (`kakaotalk-tray`)
 
 - Wine의 트레이 아이콘은 XEmbed 방식이라 Omarchy 바가 표시하지 못한다.
@@ -181,6 +192,7 @@ fcitx5의 기본값(`UseOnTheSpot=False`)에서는 X11 앱에서 조합 중인 �
 
 - 카톡 창: 불투명(`force_rgbx`, opacity 1)
 - Wine의 빈 `explorer.exe` 창: 숨김 (minpeter 가이드에서 가져옴)
+- 카톡 창에 포커스가 있을 때만 Ctrl+V → `kakaotalk-paste`
 
 ### minpeter 가이드 항목 대응
 
