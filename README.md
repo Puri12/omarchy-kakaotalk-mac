@@ -30,15 +30,18 @@ Wine은 [lacamar/wine-arm64ec](https://copr.fedorainfracloud.org/coprs/lacamar/w
 ## 파일 구성
 
 ```
-bin/kakaotalk               실행 스크립트 → ~/.local/bin/
+install.sh                  설치 순서 1-7 자동 실행 (--check로 점검만, --step N으로 한 단계만)
+bin/kakaotalk               실행 스크립트 → ~/.local/bin/  (kakaotalk check: 로그 정리, riched20 패치 재적용)
 bin/kakaotalk-clipbridge    스크린샷 붙여넣기 브리지 → ~/.local/bin/  (로그인 시 자동 시작)
 bin/kakaotalk-tray          바의 카톡 아이콘 (StatusNotifierItem) → ~/.local/bin/  (로그인 시 자동 시작)
 bin/kakaotalk-paste         카톡 창의 Ctrl+V: 복사한 파일을 첨부로 넘김 → ~/.local/bin/
+bin/kakaotalk-notify        새 메시지 데스크톱 알림 → ~/.local/bin/  (로그인 시 자동 시작)
 wine/setclip.py             Wine 안에서 BMP를 Windows 클립보드(CF_DIB)에 넣는 도우미 → ~/.local/share/kakaotalk-ec/py/
 wine/dropfiles.py           Wine 안에서 채팅방 창에 파일을 끌어다 놓기(WM_DROPFILES)로 넘기는 도우미 → ~/.local/share/kakaotalk-ec/py/
 wine/korean.reg             한국어 UI(0412)와 한글 글꼴 치환 (설치 전에 넣어야 함)
 wine/fontlink.py            한글 폰트 링크 .reg 생성기 (입력창 한글 네모 방지)
 wine/riched20-cursor-coords-rewrap.patch  카톡이 스스로 종료되는 riched20 단정문 수정 (Wine 11.18)
+wine/upstream/              Wine upstream에 보낼 riched20 패치 (conformance 테스트 포함)와 제출 안내
 config/hypr/hyprland-kakaotalk.lua   창 규칙 → ~/.config/hypr/hyprland.lua 끝에 추가
 config/hypr/autostart-kakaotalk.lua  자동 시작 → ~/.config/hypr/autostart.lua에 추가
 config/fcitx5/xim.conf               On-The-Spot 한글 조합 → ~/.config/fcitx5/conf/
@@ -52,6 +55,9 @@ tools/riched20-selftest.sh  riched20 단정문 재현 테스트 (PASS/FAIL)
 tools/riched20-repro.py     재현 테스트 본체 (32비트 Windows Python에서 실행)
 docs/riched20-crash.md      카톡이 스스로 종료되는 원인, 재현, 패치, 실패한 방식
 docs/trackpad-typing.md     카톡에서 타이핑 중 트랙패드 탭 막기
+docs/notifications.md       새 메시지 알림 원리와 한계
+tools/check-site-links.py   웹 가이드(site/)의 저장소 링크 검사
+.github/workflows/check.yml CI: bash -n, shellcheck, py_compile, luac -p, 링크 검사
 AI-SETUP.md                 AI 에이전트용 설치 안내 (확인 조건과 안전 규칙 포함)
 ```
 
@@ -63,6 +69,25 @@ AI-SETUP.md                 AI 에이전트용 설치 안내 (확인 조건과 �
 ~/.local/share/kakaotalk-ec/py       Windows ARM64 embeddable Python + setclip.py + dropfiles.py
 ~/.local/share/icons/kakaotalk.png   바와 메뉴 아이콘 (카톡 설치 폴더에서 복사)
 ```
+
+---
+
+## 빠른 설치
+
+저장소를 받은 폴더에서 실행한다. 아래 "설치 순서" 1-7을 차례로 실행하고, 이미 끝난 단계는 건너뛴다.
+
+```bash
+./install.sh --check   # 점검만 한다. 단계마다 [ok] 또는 [todo]를 출력하고, 모두 ok면 종료 코드 0
+./install.sh           # [todo]인 단계만 순서대로 실행한다. 다시 실행해도 된다
+./install.sh --step 2  # 한 단계만 다시 실행한다 (예: 저장소의 bin 스크립트로 갱신)
+```
+
+- `sudo`를 쓰지 않는다. 필요한 도구(`curl bsdtar python3 magick wl-copy wl-paste jq patch make gcc bison flex inotifywait`)가 없으면 목록을 출력하고 멈춘다. 직접 설치한 뒤 다시 실행한다.
+- `~/.config`의 파일은 고치기 전에 `<파일>.bak.<시각>`으로 백업한다. Hyprland 설정 블록은 한 번만 추가하고, `shell.json`은 JSON으로 읽어 고친다.
+- `--check`는 설치된 `~/.local/bin` 스크립트가 저장소와 다르면 `[info]` 줄로 알려 준다. 실패로 치지 않는다.
+- 카톡을 실행하지 않는다. 끝나면 다시 로그인(또는 도우미 수동 실행), 카톡 실행, 로그인 순서를 안내한다.
+
+각 단계가 하는 일은 아래 설치 순서와 같다. 스크립트가 멈추면 그 단계를 손으로 실행한다.
 
 ---
 
@@ -101,10 +126,10 @@ done
 ### 2. 실행 스크립트 설치
 
 ```bash
-install -m755 bin/kakaotalk bin/kakaotalk-clipbridge bin/kakaotalk-tray bin/kakaotalk-paste ~/.local/bin/
+install -m755 bin/kakaotalk bin/kakaotalk-clipbridge bin/kakaotalk-tray bin/kakaotalk-paste bin/kakaotalk-notify ~/.local/bin/
 ```
 
-`kakaotalk`은 `HODLL=libwow64fex.dll`(32비트 x86 코드를 FEX로 에뮬레이션)과 `winebth.sys` 차단을 설정한다. `kakaotalk wine <명령>`으로 이 prefix의 Wine을 실행할 수 있다.
+`kakaotalk`은 `HODLL=libwow64fex.dll`(32비트 x86 코드를 FEX로 에뮬레이션)과 `winebth.sys` 차단을 설정한다. `kakaotalk wine <명령>`으로 이 prefix의 Wine을 실행할 수 있다. `kakaotalk check`는 로그 정리와 riched20 패치 재적용을 한다(아래 "상태 점검" 참고).
 
 ### 3. prefix 생성과 설정 (카톡 설치 전에)
 
@@ -167,7 +192,7 @@ tools/riched20-selftest.sh   # PASS면 적용됨
 ~/.local/bin/kakaotalk kill && kakaotalk
 ```
 
-Wine RPM을 새로 풀었다면 다시 실행한다. 자세한 내용은 [docs/riched20-crash.md](docs/riched20-crash.md)에 있다.
+Wine RPM을 같은 버전으로 다시 풀었다면 `kakaotalk check`(카톡 실행 때마다 자동)가 보관해 둔 패치본을 다시 넣는다. 버전이 바뀌었다면 이 스크립트를 다시 실행한다. 자세한 내용은 [docs/riched20-crash.md](docs/riched20-crash.md)에 있다.
 
 ---
 
@@ -200,6 +225,8 @@ fcitx5의 기본값(`UseOnTheSpot=False`)에서는 X11 앱에서 조합 중인 �
 
 - 카톡의 Ctrl+V는 클립보드에서 이미지, 텍스트, 카톡 전용 형식만 찾고 **파일(`CF_HDROP`)은 찾지 않는다.** 그래서 복사한 파일은 경로 글자로 붙는다.
 - 채팅방 창은 파일 끌어다 놓기(`WM_DROPFILES`)는 받는다. 그래서 카톡 창에 포커스가 있을 때만 Ctrl+V를 `kakaotalk-paste`에 바인딩하고, 클립보드에 로컬 파일이 있으면 채팅방에 드롭으로 넘긴다. 카톡의 "파일 전송" 확인 창이 뜬다.
+- 드롭 대상은 Hyprland에서 포커스된 카톡 창 하나다. 창 제목과 위치·크기로 Wine 쪽 창을 찾아 맞춘다. 맞는 창이 없으면 아무것도 드롭하지 않고 원래 Ctrl+V를 전달한다. Wine의 "앞 창"이 다른 대화방이어도 엉뚱한 방으로 가지 않는다.
+- 드롭하려고 카톡 프로세스에 쓴 메모리 블록은 드롭이 끝나면 해제한다.
 - 파일이 아니면 원래 Ctrl+V를 그대로 전달한다. 텍스트와 스크린샷 붙여넣기는 그대로다.
 
 자세한 내용은 [docs/file-paste.md](docs/file-paste.md)에 있다.
@@ -208,7 +235,7 @@ fcitx5의 기본값(`UseOnTheSpot=False`)에서는 X11 앱에서 조합 중인 �
 
 - Asahi 트랙패드는 "타이핑 중 비활성화"만으로는 탭이 막히지 않는다. Omarchy 기본값은 그래서 탭 클릭을 끈다.
 - 탭 클릭을 켜 두었다면, 카톡 창에서 키를 누르는 동안 탭 클릭을 끄고 마지막 입력 0.7초 뒤 다시 켠다. 물리 클릭은 계속 된다.
-- 탭 클릭을 끈 채 쓴다면 이 부분을 빼야 한다(0.7초 뒤 켜기 때문).
+- 사용자의 `tap_to_click`이 켜져 있을 때만 동작하고, 끝나면 원래 값으로 되돌린다. 탭 클릭을 끈 채 써도 이 부분을 뺄 필요가 없다.
 
 자세한 내용은 [docs/trackpad-typing.md](docs/trackpad-typing.md)에 있다.
 
@@ -219,6 +246,25 @@ fcitx5의 기본값(`UseOnTheSpot=False`)에서는 X11 앱에서 조합 중인 �
 - Windows 7 원본 `msftedit.dll`로 바꾸는 방법은 카톡이 시작 직후 종료해서 쓸 수 없었다.
 
 자세한 내용은 [docs/riched20-crash.md](docs/riched20-crash.md)에 있다.
+
+### 새 메시지 알림 (`kakaotalk-notify`)
+
+- 이 환경의 32비트 카톡은 새 메시지 알림 창을 만들지 않는다. 대신 메시지가 오면 방마다 있는 채팅 기록 DB 파일(`chatLogs_<방 번호>.edb-wal`)을 고친다.
+- `kakaotalk-notify`는 이 파일의 변경을 `inotifywait`로 지켜보고 데스크톱 알림(제목 `카카오톡`, 본문 `새 메시지`)을 띄운다. 알림을 누르면 카톡 창이 나온다.
+- 한 방에서 5초 안에 이어진 변경은 알림 하나로 묶는다. 카톡 창에 포커스가 있을 때는 알리지 않는다.
+- 보낸 사람과 방 이름은 보여 주지 않는다. 파일 이름만 보고 내용은 읽지 않는다.
+- `autostart-kakaotalk.lua`로 로그인 시 자동 시작한다.
+
+자세한 내용은 [docs/notifications.md](docs/notifications.md)에 있다.
+
+### 상태 점검 (`kakaotalk check`)
+
+`kakaotalk check`로 직접 실행할 수 있고, 카톡을 실행할 때마다 자동으로 실행된다.
+
+- `~/.local/state/kakaotalk.log`가 1MiB를 넘으면 마지막 2000줄만 남긴다.
+- Wine RPM을 다시 풀어 기본 `riched20.dll`이 돌아왔다면 보관해 둔 패치본(`~/.local/share/kakaotalk-ec/riched20-fix`)을 다시 넣는다. 패치본을 빌드한 Wine 버전과 설치된 버전이 같을 때만 넣고, 다르면 `tools/build-riched20.sh`를 다시 실행하라는 경고를 로그에 남긴다.
+
+설치 전체의 점검은 `./install.sh --check`로 한다.
 
 ### 바 아이콘 (`kakaotalk-tray`)
 
@@ -252,7 +298,10 @@ fcitx5의 기본값(`UseOnTheSpot=False`)에서는 X11 앱에서 조합 중인 �
 |---|---|
 | 카톡 창이 안 뜨고 프로세스만 있음 | XWayland xwm이 고장난 상태. 간단한 X11 창도 안 뜨면 확실하다. `omarchy system logout` 후 다시 로그인한다. Xwayland를 `kill`해도 재시작되지 않는다 |
 | 카톡 창이 사라짐 | 트레이로 숨은 것. 바 아이콘을 누르거나 `kakaotalk`을 다시 실행한다 |
-| 카톡이 통째로 종료되고 로그에 `MEPF_REWRAP` | 기본 riched20의 단정문. `tools/build-riched20.sh`로 패치하고 `tools/riched20-selftest.sh`로 확인 |
+| 무엇이 빠졌는지 모름 | `./install.sh --check`로 단계별 `[todo]`를 보고 `./install.sh`로 채운다 |
+| 새 메시지 알림이 안 뜸 | `pgrep -f '[k]akaotalk-notify'`로 실행 중인지 본다. 없으면 `setsid -f ~/.local/bin/kakaotalk-notify`. 카톡 창에 포커스가 있을 때는 원래 뜨지 않는다. [docs/notifications.md](docs/notifications.md) 참고 |
+| Ctrl+V로 파일이 안 붙고 경로 글자가 붙음 | 포커스된 카톡 창을 Wine 쪽에서 찾지 못해 원래 Ctrl+V를 넘긴 것. 채팅방 창을 한 번 클릭한 뒤 다시 누른다 |
+| 카톡이 통째로 종료되고 로그에 `MEPF_REWRAP` | 기본 riched20의 단정문. `kakaotalk check`를 실행하고 로그에 Wine 버전 경고가 있으면 `tools/build-riched20.sh`로 다시 패치한다. `tools/riched20-selftest.sh`로 확인 |
 | 채팅 중 커서가 튀거나 다른 창이 클릭됨 | 손바닥 탭. `hyprland-kakaotalk.lua`의 타이핑 중 탭 막기 부분이 들어갔는지 확인 |
 | 로그아웃/로그인 뒤 wireplumber CPU 100% | wireplumber 0.5.17의 루프 버그(`wp_proxy_get_bound_id` 이후). `systemctl --user kill --signal=KILL wireplumber && systemctl --user restart wireplumber` |
 | 바에 아이콘이 안 보임 | `omarchy restart shell` |
@@ -261,7 +310,8 @@ fcitx5의 기본값(`UseOnTheSpot=False`)에서는 X11 앱에서 조합 중인 �
 ## 한계
 
 - 64비트 클라이언트(`KakaoTalkUI.exe`)는 사용할 수 없다 (Themida).
-- 통화와 알림은 충분히 검증하지 않았다. 이 환경의 32비트 카톡은 새 메시지 알림 창을 만들지 않았다.
+- 통화는 충분히 검증하지 않았다.
+- 알림은 `새 메시지`라는 기본 알림뿐이다. 이 환경의 32비트 카톡은 알림 창을 만들지 않아서, 보낸 사람, 방 이름, 내용은 보여 줄 수 없다. 다른 기기(휴대폰 등)에서 내가 보낸 메시지나 읽음 처리·동기화로 DB가 바뀌어도 알림이 뜰 수 있다.
 - riched20 패치는 Wine 11.18 기준이다. 다른 버전은 `WINE_VERSION`을 맞춰 다시 빌드해야 한다.
 - 바 아이콘에는 안 읽은 메시지 표시가 없다.
 
