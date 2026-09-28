@@ -1,41 +1,27 @@
 #!/usr/bin/env python3
-"""Route KakaoTalk's new-message notifications to desktop notifications; clicking one shows KakaoTalk.
+"""Route KakaoTalk's new-message popups to desktop notifications titled with the room name.
 
-Two modes (KAKAO_NOTIFY_MODE):
+KakaoTalk's own popup (an untitled layered window that opens at the bottom edge of the screen,
+plus its "KakaoTalkShadowWnd") is moved to a hidden special workspace as soon as Hyprland maps
+it, and a notification titled with the room name says "새 메시지" (no message text); clicking it
+shows KakaoTalk. KakaoTalk only shows popups for rooms whose notifications are on, so its own
+per-room mute setting applies.
 
-popup (default): KakaoTalk's own popup (an untitled layered window that opens at the bottom
-edge of the screen, plus its "KakaoTalkShadowWnd") is moved to a hidden special workspace as
-soon as Hyprland maps it, and a notification titled with the room name says "새 메시지" (no
-message text). The room name comes from the launcher: it runs KakaoTalk with Wine's +text trace
-and pipes stderr through `kakaotalk-notify relay LOG`, which picks the popup's room name out of
-the DrawTextExW calls, sends only that to $XDG_RUNTIME_DIR/kakaotalk-notify/room.sock and drops
+The room name comes from the launcher: it runs KakaoTalk with Wine's +text trace and pipes
+stderr through `kakaotalk-notify relay LOG`, which picks the popup's room name out of the
+DrawTextExW calls, sends only that to $XDG_RUNTIME_DIR/kakaotalk-notify/room.sock and drops
 every other trace line (other stderr lines go to LOG). Without it the title is "카카오톡".
-KakaoTalk only shows popups for rooms whose notifications are on, so its own per-room mute
-setting applies.
-
-wal: for when KakaoTalk shows no popups. Watches chat_data/chatLogs_<roomId>.edb-wal with
-inotifywait (names only; the encrypted contents are never read) and sends one "새 메시지"
-notification per room per burst, never while a KakaoTalk window is focused. KakaoTalk's mute
-setting is unreadable here, so each notification has a "이 방 알림 끄기" button that adds the
-room id to ~/.config/kakaotalk-notify/muted (one id per line; delete a line to unmute).
 
 Usage: kakaotalk-notify             (started by Hyprland autostart; see docs/notifications.md)
        kakaotalk-notify relay LOG   (stderr filter used by the kakaotalk launcher)
 
-Testing overrides:
-  KAKAO_CHAT_DATA_GLOB  glob of chat_data dirs to watch
-  KAKAO_NOTIFY_MUTED    path of the muted-rooms file
-  NOTIFY_CMD            command prefix; headline and body (and, in wal mode, the room id) are
-                        appended; in wal mode a stdout line "mute" or "default" is handled like
-                        the notification's action
-  ACTIVE_CLASS_CMD      command printing the active window class
+Testing override:
+  NOTIFY_CMD  command prefix; headline and body are appended
 """
-import glob
 import json
 import os
 import re
 import shlex
-import signal
 import socket
 import subprocess
 import sys
@@ -43,14 +29,8 @@ import threading
 import time
 
 ICON = os.path.expanduser("~/.local/share/icons/kakaotalk.png")
-DEFAULT_GLOB = os.path.expanduser(
-    "~/.local/share/kakaotalk-ec/prefix/drive_c/users/*/AppData/Local/Kakao/KakaoTalk/users/*/chat_data"
-)
-ROOM_FILE = re.compile(r"^chatLogs_(\d+)\.edb-wal$")
 HEADLINE = "카카오톡"
 BODY = "새 메시지"
-DEBOUNCE = 5.0  # seconds; one message is a burst of writes within about a second
-RESCAN = 30  # seconds between looks for account dirs
 KAKAO_CLASS = "kakaotalk.exe"
 
 
@@ -58,85 +38,11 @@ def log(msg):
     print(f"kakaotalk-notify: {msg}", file=sys.stderr, flush=True)
 
 
-def active_class():
-    cmd = os.environ.get("ACTIVE_CLASS_CMD")
-    try:
-        if cmd:
-            out = subprocess.run(shlex.split(cmd), capture_output=True, text=True, timeout=2).stdout
-            return out.strip()
-        out = subprocess.run(["hyprctl", "activewindow", "-j"], capture_output=True, text=True, timeout=2).stdout
-        return (json.loads(out or "{}") or {}).get("class", "")
-    except (OSError, subprocess.SubprocessError, ValueError) as e:
-        log(f"active window lookup failed: {e}")
-        return ""
-
-
-MUTED_FILE = os.environ.get("KAKAO_NOTIFY_MUTED") or os.path.join(
-    os.environ.get("XDG_CONFIG_HOME") or os.path.expanduser("~/.config"), "kakaotalk-notify", "muted")
-
-
-class Muted:
-    """Room ids from MUTED_FILE, re-read whenever the file changes."""
-
-    def __init__(self):
-        self.mtime = None
-        self.ids = set()
-        self.lock = threading.Lock()
-
-    def __contains__(self, room):
-        try:
-            mtime = os.stat(MUTED_FILE).st_mtime_ns
-        except FileNotFoundError:
-            mtime = None
-        if mtime != self.mtime:
-            self.mtime = mtime
-            self.ids = set()
-            if mtime is not None:
-                with open(MUTED_FILE, encoding="utf-8") as f:
-                    self.ids = {line.split("#")[0].strip() for line in f} - {""}
-        return room in self.ids
-
-    def add(self, room):
-        with self.lock:
-            if room in self:
-                return
-            os.makedirs(os.path.dirname(MUTED_FILE), exist_ok=True)
-            with open(MUTED_FILE, "a", encoding="utf-8") as f:
-                f.write(f"{room}  # muted {time.strftime('%F %T')}\n")
-            log(f"muted room {room}")
-
-
-def notify_argv(room):
-    cmd = os.environ.get("NOTIFY_CMD")
-    if cmd:
-        return shlex.split(cmd) + [HEADLINE, BODY, room]
-    return ["notify-send", "--app-name", HEADLINE, "--icon", ICON,
-            "--action", "default=열기", "--action", "mute=이 방 알림 끄기", HEADLINE, BODY]
-
-
-def notify(room, muted):
-    """Show one notification and act on the chosen action (runs in its own thread)."""
-    try:
-        proc = subprocess.Popen(notify_argv(room), stdout=subprocess.PIPE, text=True)
-    except OSError as e:
-        log(f"notification failed: {e}")
-        return
-    for line in proc.stdout:
-        action = line.strip()
-        if action == "mute":
-            muted.add(room)
-        elif action == "default":
-            subprocess.Popen(["kakaotalk"], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL,
-                             start_new_session=True)
-        elif action:
-            print(action, flush=True)
-    proc.wait()
-
-
 RUNTIME = os.path.join(os.environ.get("XDG_RUNTIME_DIR", "/tmp"), "kakaotalk-notify")
 ROOM_SOCK = os.path.join(RUNTIME, "room.sock")
 HIDDEN_WS = "special:katokpopup"
 ROOM_WAIT = 3.0  # seconds after a popup opens to wait for its room name before notifying without one
+ROOM_EARLY = 2.0  # seconds a room name drawn before Hyprland reports its popup is kept
 
 # Wine's +text trace of DrawTextExW: the string (debugstr escapes) and its rectangle.
 DRAW = re.compile(r':trace:text:DrawTextExW L"(.*)", -?\d+, \[\((-?\d+),(-?\d+)\)-')
@@ -233,20 +139,30 @@ def notify_room(room):
 
 
 class Popups:
-    """Pairs each opened popup with the next room name drawn in it; repaints of a popup draw its
-    room again, and those arrive with no open popup waiting and are dropped."""
+    """Pairs each opened popup with the room name drawn in it, whichever arrives first. Repaints
+    draw a room name again with no popup opening, so an unpaired name expires after ROOM_EARLY."""
 
     def __init__(self):
         self.lock = threading.Lock()
         self.waiting = []  # ids of popups opened but not yet notified, oldest first
+        self.early = []  # (monotonic time, room name) drawn with no popup waiting
         self.next_id = 0
 
     def opened(self):
         with self.lock:
-            pid = self.next_id
-            self.next_id += 1
-            self.waiting.append(pid)
-        threading.Timer(ROOM_WAIT, self.timeout, args=(pid,)).start()
+            now = time.monotonic()
+            self.early = [(t, n) for t, n in self.early if now - t < ROOM_EARLY]
+            if self.early:
+                name = self.early.pop(0)[1]
+            else:
+                name = None
+                pid = self.next_id
+                self.next_id += 1
+                self.waiting.append(pid)
+        if name is not None:
+            notify_room(name)
+        else:
+            threading.Timer(ROOM_WAIT, self.timeout, args=(pid,)).start()
 
     def timeout(self, pid):
         with self.lock:
@@ -258,6 +174,7 @@ class Popups:
     def room(self, name):
         with self.lock:
             if not self.waiting:
+                self.early.append((time.monotonic(), name))
                 return
             self.waiting.pop(0)
         notify_room(name)
@@ -305,51 +222,8 @@ def main_popup():
 def main():
     if sys.argv[1:2] == ["relay"]:
         relay(sys.argv[2])
-    elif os.environ.get("KAKAO_NOTIFY_MODE", "popup") == "popup":
-        main_popup()
     else:
-        main_wal()
-
-
-def main_wal():
-    pattern = os.environ.get("KAKAO_CHAT_DATA_GLOB", DEFAULT_GLOB)
-    last = {}  # room file name -> monotonic time of the event that started its burst
-    muted = Muted()
-    watcher = None
-
-    def stop(*_):
-        if watcher and watcher.poll() is None:
-            watcher.terminate()
-        sys.exit(0)
-
-    signal.signal(signal.SIGTERM, stop)
-    signal.signal(signal.SIGINT, stop)
-
-    while True:
-        dirs = sorted(d for d in glob.glob(pattern) if os.path.isdir(d))
-        if not dirs:
-            time.sleep(RESCAN)
-            continue
-        watcher = subprocess.Popen(
-            ["inotifywait", "-q", "-m", "-e", "modify", "-e", "close_write", "--format", "%f", *dirs],
-            stdout=subprocess.PIPE, text=True, bufsize=1,
-        )
-        for line in watcher.stdout:
-            name = line.rstrip("\n")
-            match = ROOM_FILE.match(name)
-            if not match:
-                continue
-            now = time.monotonic()
-            if now - last.get(name, -DEBOUNCE) < DEBOUNCE:
-                continue
-            last[name] = now  # also set when suppressed, so the rest of the burst stays quiet
-            room = match.group(1)
-            if room in muted or active_class().lower() == KAKAO_CLASS:
-                continue
-            threading.Thread(target=notify, args=(room, muted), daemon=True).start()
-        watcher.wait()
-        log(f"inotifywait exited ({watcher.returncode}); rescanning in {RESCAN}s")
-        time.sleep(RESCAN)
+        main_popup()
 
 
 if __name__ == "__main__":

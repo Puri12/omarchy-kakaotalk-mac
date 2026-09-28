@@ -83,7 +83,7 @@ AI-SETUP.md                 AI 에이전트용 설치 안내 (확인 조건과 �
 ./install.sh --step 2  # 한 단계만 다시 실행한다 (예: 저장소의 bin 스크립트로 갱신)
 ```
 
-- `sudo`를 쓰지 않는다. 필요한 도구(`curl bsdtar python3 magick wl-copy wl-paste jq patch make gcc bison flex inotifywait`)가 없으면 목록을 출력하고 멈춘다. 직접 설치한 뒤 다시 실행한다.
+- `sudo`를 쓰지 않는다. 필요한 도구(`curl bsdtar python3 magick wl-copy wl-paste jq patch make gcc bison flex`)가 없으면 목록을 출력하고 멈춘다. 직접 설치한 뒤 다시 실행한다.
 - `~/.config`의 파일은 고치기 전에 `<파일>.bak.<시각>`으로 백업한다. Hyprland 설정 블록은 한 번만 추가하고, `shell.json`은 JSON으로 읽어 고친다.
 - `--check`는 설치된 `~/.local/bin` 스크립트가 저장소와 다르면 `[info]` 줄로 알려 준다. 실패로 치지 않는다.
 - 카톡을 실행하지 않는다. 끝나면 다시 로그인(또는 도우미 수동 실행), 카톡 실행, 로그인 순서를 안내한다.
@@ -255,7 +255,6 @@ fcitx5의 기본값(`UseOnTheSpot=False`)에서는 X11 앱에서 조합 중인 �
 - 카톡이 오른쪽 아래에 띄우는 알림 창은 숨기고(`special:katokpopup`), 같은 알림을 Omarchy 알림으로 보낸다. 제목은 방 이름, 본문은 `새 메시지`, 아이콘은 카카오톡이다. 알림을 누르면 카톡 창이 나온다.
 - 방 이름은 실행기 `kakaotalk`가 카톡을 Wine 글자 추적(`+text`)으로 띄워 알림 창에 그려지는 글자에서 뽑는다. 방 이름만 넘기고 나머지 추적(대화 내용 포함)은 어디에도 쓰지 않는다.
 - 카톡에서 알림을 끈 방은 카톡이 알림 창을 띄우지 않으므로 알림도 오지 않는다.
-- 카톡이 알림 창을 띄우지 않는 환경에서는 `KAKAO_NOTIFY_MODE=wal`로 채팅 DB 파일 변화를 보는 예전 방식(제목 `카카오톡`, 방 이름 없음)을 쓴다.
 - `autostart-kakaotalk.lua`로 로그인 시 자동 시작한다.
 
 자세한 내용은 [docs/notifications.md](docs/notifications.md)에 있다.

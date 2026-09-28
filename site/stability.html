@@ -97,7 +97,6 @@ tools/riched20-selftest.sh   # PASS
 <li><code>kakaotalk-notify</code>가 Hyprland 이벤트에서 카톡 알림 창(제목 없이 화면 아래 끝에서 열리는 창)을 보면 숨김 워크스페이스로 옮기고, 제목은 방 이름, 본문은 "새 메시지", 아이콘은 카카오톡인 알림을 보냅니다. 알림을 누르면 카톡 창이 나옵니다.</li>
 <li>방 이름은 실행기 <code>kakaotalk</code>가 카톡을 Wine 글자 추적(<code>WINEDEBUG=-all,+text</code>)으로 띄우고, 알림 창에 그려지는 글자에서 방 이름만 뽑아 넘깁니다. 대화 내용이 담긴 나머지 추적은 어디에도 쓰지 않고 버립니다.</li>
 <li>카톡에서 알림을 끈 방은 카톡이 알림 창을 띄우지 않으므로 알림도 오지 않습니다.</li>
-<li>카톡이 알림 창을 띄우지 않는 환경에서는 <code>KAKAO_NOTIFY_MODE=wal</code>로 채팅 DB 파일 변화를 보는 예전 방식을 씁니다(방 이름 없이 "새 메시지", "이 방 알림 끄기" 버튼).</li>
 <li><code>autostart-kakaotalk.lua</code>로 로그인할 때 자동 시작합니다.</li>
 </ul>
 <figure class="code"><figcaption>bash</figcaption><pre tabindex="0"><code>pgrep -f '[k]akaotalk-notify'            <span class="c"># 실행 중이면 PID가 나옴</span>

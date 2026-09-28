@@ -33,7 +33,7 @@
 | Lua 설정 | `ls ~/.config/hypr/hyprland.lua ~/.config/hypr/autostart.lua` | 둘 다 있음 |
 | Omarchy | `command -v omarchy` | 경로가 나옴 |
 | 입력기 | `pgrep -x fcitx5` | PID가 나옴 |
-| 도구 | `./install.sh --check`의 첫 줄 (또는 `for b in curl bsdtar python3 magick wl-copy wl-paste jq patch make gcc bison flex inotifywait; do command -v $b >/dev/null \|\| echo "missing $b"; done`) | `[ok] tools` (또는 출력 없음) |
+| 도구 | `./install.sh --check`의 첫 줄 (또는 `for b in curl bsdtar python3 magick wl-copy wl-paste jq patch make gcc bison flex; do command -v $b >/dev/null \|\| echo "missing $b"; done`) | `[ok] tools` (또는 출력 없음) |
 | 트레이용 | `python3 -c 'import gi; gi.require_version("Gio","2.0")'` | 오류 없음 |
 
 없는 도구가 있으면 사용자에게 설치를 요청한다(규칙 1).

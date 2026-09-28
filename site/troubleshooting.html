@@ -69,7 +69,7 @@
           </details>
           <details>
             <summary>새 메시지 알림이 안 와요<span class="pm" aria-hidden="true"></span></summary>
-            <div class="answer"><code>pgrep -f '[k]akaotalk-notify'</code>에 PID가 나오는지 봅니다. 없으면 <code>command -v inotifywait</code>로 <code>inotifywait</code>(inotify-tools 패키지)가 설치됐는지 확인하고 <code>setsid -f ~/.local/bin/kakaotalk-notify</code>로 띄웁니다. 카톡 창에 포커스가 있을 때는 원래 알리지 않습니다. 카톡에 처음 로그인한 뒤에는 채팅 폴더를 찾기까지 최대 30초가 걸립니다. <a href="stability.html#notify">자세히</a></div>
+            <div class="answer"><code>pgrep -f '[k]akaotalk-notify'</code>에 PID가 나오는지 봅니다. 없으면 <code>setsid -f ~/.local/bin/kakaotalk-notify</code>로 띄웁니다. 알림 제목이 방 이름 대신 "카카오톡"이면 카톡이 <code>kakaotalk</code> 실행기로 뜨지 않은 것이니, 카톡을 종료하고 <code>kakaotalk</code>로 다시 띄웁니다. 카톡 설정에서 알림을 끈 방이나 카톡 창을 보고 있을 때는 카톡이 알림 창을 띄우지 않으므로 알림도 없습니다. <a href="stability.html#notify">자세히</a></div>
           </details>
           <details>
             <summary>로그아웃/로그인 뒤 wireplumber가 CPU 100%예요<span class="pm" aria-hidden="true"></span></summary>

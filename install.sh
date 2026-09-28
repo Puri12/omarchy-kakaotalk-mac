@@ -26,7 +26,7 @@ ICON=$HOME/.local/share/icons/kakaotalk.png
 DESKTOP=$HOME/.local/share/applications/kakaotalk.desktop
 NOTO=/usr/share/fonts/noto-cjk
 
-TOOLS=(curl bsdtar python3 magick wl-copy wl-paste jq patch make gcc bison flex inotifywait)
+TOOLS=(curl bsdtar python3 magick wl-copy wl-paste jq patch make gcc bison flex)
 COPR=https://download.copr.fedorainfracloud.org/results/lacamar/wine-arm64ec/fedora-43-aarch64
 RPMS=(
   11027010-wine/wine-core-11.18-ec3.fc43.aarch64.rpm
