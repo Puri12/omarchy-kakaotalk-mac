@@ -18,16 +18,17 @@ import json
 import os
 import subprocess
 import sys
+import syslog
 import time
 from urllib.parse import unquote, urlsplit
 
-KAKAOTALK = os.path.expanduser("~/.local/bin/kakaotalk")
-PY_DIR = os.path.expanduser("~/.local/share/kakaotalk-ec/py")
-CLIP_DIR = os.path.join(os.environ.get("XDG_RUNTIME_DIR", "/tmp"), "kakaotalk-clip")
+from kakaotalk_clip import ERRORS, KAKAOTALK, PY_DIR, set_windows_clipboard
 
 
 def log(msg):
     print(f"{time.strftime('%H:%M:%S')} kakaotalk-paste: {msg}", file=sys.stderr, flush=True)
+    # Hyprland starts this with stderr on /dev/null: journalctl --user -t kakaotalk-paste
+    syslog.syslog(msg)
 
 
 def paste(*args):
@@ -50,18 +51,13 @@ def local_files():
 
 
 def put_png_on_windows_clipboard():
-    """Same conversion as kakaotalk-clipbridge: PNG -> BMP -> CF_DIB via setclip.py in Wine."""
-    png = paste("--no-newline", "--type", "image/png")
-    if not png:
-        return
-    os.makedirs(CLIP_DIR, exist_ok=True)
-    bmp = os.path.join(CLIP_DIR, "clip.bmp")
+    """Same handover as kakaotalk-clipbridge, which restores the PNG once focus leaves KakaoTalk."""
     try:
-        subprocess.run(["magick", "png:-", "-background", "white", "-alpha", "remove", "-alpha", "off",
-                        f"bmp3:{bmp}"], input=png, check=True, timeout=30, capture_output=True)
-        subprocess.run([KAKAOTALK, "wine", f"Z:{PY_DIR}/python.exe", f"Z:{PY_DIR}/setclip.py", f"Z:{bmp}"],
-                       check=True, timeout=60, capture_output=True)
-    except (subprocess.CalledProcessError, subprocess.TimeoutExpired) as exc:
+        png = paste("--no-newline", "--type", "image/png")
+        if not png:
+            return
+        set_windows_clipboard(png)
+    except ERRORS as exc:
         log(f"setting the Windows clipboard failed: {exc}")
         return
     log(f"image ({len(png)} bytes PNG) put on the Windows clipboard before Ctrl+V")
@@ -90,8 +86,16 @@ def focused_window():
 
 
 def main():
-    paths = local_files()
-    target = focused_window() if paths else None
+    syslog.openlog("kakaotalk-paste")
+    try:
+        paths = local_files()
+        target = focused_window() if paths else None
+        png_only = not paths and paste("--list-types").decode(errors="replace").split() == ["image/png"]
+    except subprocess.TimeoutExpired as exc:
+        # A stalled clipboard or compositor must not swallow the keypress.
+        log(f"passing Ctrl+V on without looking at the clipboard: {exc}")
+        paths = target = None
+        png_only = False
     if paths and target:
         title, geometry = target
         result = subprocess.run([KAKAOTALK, "wine", f"Z:{PY_DIR}/python.exe", "-X", "utf8",
@@ -107,7 +111,7 @@ def main():
             return
         if result.returncode != 3:
             log(f"drop failed ({result.returncode}): {result.stderr.strip()[-300:]}")
-    elif not paths and paste("--list-types").decode(errors="replace").split() == ["image/png"]:
+    elif png_only:
         put_png_on_windows_clipboard()
     send_ctrl_v()
 

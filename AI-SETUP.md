@@ -74,7 +74,7 @@ README의 "1. ARM64EC Wine과 FEX DLL 받기" 두 코드 블록을 그대로 실
 ### 2-2. 실행 스크립트
 
 ```bash
-install -m755 bin/kakaotalk bin/kakaotalk-clipbridge bin/kakaotalk-tray bin/kakaotalk-paste bin/kakaotalk-notify ~/.local/bin/
+install -m755 bin/kakaotalk bin/kakaotalk-clipbridge bin/kakaotalk_clip.py bin/kakaotalk-tray bin/kakaotalk-paste bin/kakaotalk-notify ~/.local/bin/
 ```
 
 **확인:** `~/.local/bin/kakaotalk wine --version`이 2-1과 같은 버전을 출력한다.

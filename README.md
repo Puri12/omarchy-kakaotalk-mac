@@ -33,6 +33,7 @@ Wine은 [lacamar/wine-arm64ec](https://copr.fedorainfracloud.org/coprs/lacamar/w
 install.sh                  설치 순서 1-7 자동 실행 (--check로 점검만, --step N으로 한 단계만)
 bin/kakaotalk               실행 스크립트 → ~/.local/bin/  (kakaotalk check: 로그 정리, riched20 패치 재적용)
 bin/kakaotalk-clipbridge    스크린샷 붙여넣기 브리지 → ~/.local/bin/  (로그인 시 자동 시작)
+bin/kakaotalk_clip.py       브리지와 kakaotalk-paste가 함께 쓰는 이미지 넘김 모듈 → ~/.local/bin/
 bin/kakaotalk-tray          바의 카톡 아이콘 (StatusNotifierItem) → ~/.local/bin/  (로그인 시 자동 시작)
 bin/kakaotalk-paste         카톡 창의 Ctrl+V: 복사한 파일을 첨부로 넘김 → ~/.local/bin/
 bin/kakaotalk-notify        새 메시지 데스크톱 알림 → ~/.local/bin/  (로그인 시 자동 시작)
@@ -128,7 +129,7 @@ done
 ### 2. 실행 스크립트 설치
 
 ```bash
-install -m755 bin/kakaotalk bin/kakaotalk-clipbridge bin/kakaotalk-tray bin/kakaotalk-paste bin/kakaotalk-notify ~/.local/bin/
+install -m755 bin/kakaotalk bin/kakaotalk-clipbridge bin/kakaotalk_clip.py bin/kakaotalk-tray bin/kakaotalk-paste bin/kakaotalk-notify ~/.local/bin/
 ```
 
 `kakaotalk`은 `HODLL=libwow64fex.dll`(32비트 x86 코드를 FEX로 에뮬레이션)과 `winebth.sys` 차단을 설정한다. `kakaotalk wine <명령>`으로 이 prefix의 Wine을 실행할 수 있다. `kakaotalk check`는 로그 정리와 riched20 패치 재적용을 한다(아래 "상태 점검" 참고).
@@ -213,9 +214,10 @@ fcitx5의 기본값(`UseOnTheSpot=False`)에서는 X11 앱에서 조합 중인 �
 ### 스크린샷 붙여넣기 (`kakaotalk-clipbridge` + `setclip.py`)
 
 - Wine X11 드라이버는 `image/png`를 Windows 앱이 찾지 않는 "PNG"라는 형식으로만 넘긴다. Omarchy 스크린샷은 `image/png`만 올린다.
-- 카카오톡 창에 포커스가 있으면(카톡을 보는 중에 찍은 스크린샷 포함), 브리지가 PNG를 BMP로 바꾸고 **Wine 안에서 Windows 클립보드(`CF_DIB`)에 직접 넣는다.** 3450×2224 스크린샷 기준 약 0.3초 걸린다.
+- 카카오톡 창에 포커스가 있으면(카톡을 보는 중에 찍은 스크린샷 포함), 브리지가 PNG를 BMP로 바꾸고 **Wine 안에서 Windows 클립보드(`CF_DIB`)에 직접 넣는다.** 긴 변이 2560px를 넘으면 줄여서 넣는다. 3456×2234 스크린샷 기준 약 0.4초 걸린다.
+- 포커스가 0.8초 유지될 때만 넘긴다. 그보다 빨리 누른 Ctrl+V는 `kakaotalk-paste`가 같은 방식으로 직접 넘긴다.
 - 카톡은 Wine 안에서 바로 읽으므로 큰 데이터가 XWayland를 거치지 않는다.
-- Hyprland가 Wine 클립보드를 Wayland 쪽에 `image/bmp`로 복사해 오므로, **카톡에서 벗어나면 원래 PNG로 즉시 되돌린다.**
+- Hyprland가 Wine 클립보드를 Wayland 쪽에 `image/bmp`로 복사해 오므로, **카톡에서 벗어나면 원래 PNG로 즉시 되돌린다.** 카톡 안에서 텍스트나 다른 이미지를 복사했다면 되돌리지 않는다.
 
 자세한 내용은 [docs/clipboard-paste.md](docs/clipboard-paste.md)에 있다. 동작 확인은 `tools/clipboard-selftest.sh`로 한다.
 

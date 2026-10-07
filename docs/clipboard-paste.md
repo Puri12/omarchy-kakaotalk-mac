@@ -5,6 +5,7 @@ Omarchy에서 찍은 스크린샷을 카카오톡 채팅창에 **Ctrl+V로 이�
 관련 파일:
 
 - `bin/kakaotalk-clipbridge` → `~/.local/bin/` (로그인 시 자동 시작)
+- `bin/kakaotalk_clip.py` → `~/.local/bin/` (브리지와 `kakaotalk-paste`가 함께 쓰는 이미지 넘김 모듈)
 - `wine/setclip.py` → `~/.local/share/kakaotalk-ec/py/`
 - Windows ARM64 embeddable Python → `~/.local/share/kakaotalk-ec/py/`
 - `tools/clipboard-selftest.sh`: 동작 확인용
@@ -18,17 +19,19 @@ Omarchy에서 찍은 스크린샷을 카카오톡 채팅창에 **Ctrl+V로 이�
 
 카카오톡 창에 포커스가 있을 때 클립보드가 `image/png`만 가지고 있으면, 브리지가 다음을 한다.
 
-1. PNG를 BMP로 변환한다 (ImageMagick, 알파는 흰 배경에 합성).
+1. PNG를 BMP로 변환한다 (ImageMagick, 알파는 흰 배경에 합성). 긴 변이 2560px를 넘으면 줄인다 (`kakaotalk_clip.py`의 `MAX_EDGE`, 0이면 제한 없음).
 2. **Wine prefix 안에서** Windows ARM64 Python으로 `setclip.py`를 실행해 Windows 클립보드에 `CF_DIB`를 직접 넣는다.
 3. 카카오톡은 Ctrl+V를 누를 때 같은 Wine 안(wineserver)에서 이미지를 읽는다. **큰 데이터가 XWayland를 지나가지 않는다.**
-4. Hyprland는 Wine 클립보드를 Wayland 쪽에 `image/bmp` 등으로 복사해 온다. 그래서 **카카오톡에서 포커스가 빠지면 원래 PNG를 다시 올린다.** 다른 Wayland 앱이 큰 BMP를 XWayland를 통해 끌어가지 않게 하기 위해서다. 카톡 안에서 새로 텍스트를 복사했다면 되돌리지 않는다.
+4. Hyprland는 Wine 클립보드를 Wayland 쪽에 `image/bmp` 등으로 복사해 온다. 그래서 **카카오톡에서 포커스가 빠지면 원래 PNG를 다시 올린다.** 다른 Wayland 앱이 큰 BMP를 XWayland를 통해 끌어가지 않게 하기 위해서다. 카톡 안에서 새로 텍스트나 다른 이미지를 복사했다면 되돌리지 않는다. 다른 이미지인지는 Windows 클립보드의 `CF_DIB` 크기가 넣었던 것과 같은지로 구분한다 (`setclip.py --check`).
 
 이벤트는 두 곳에서 받는다.
 
 - **Hyprland 이벤트 소켓(`activewindow`):** 다른 창에서 카톡으로 포커스가 옮겨올 때
 - **`wl-paste --watch`:** 카톡을 보던 중에 스크린샷을 찍을 때. 영역 선택 화면은 레이어 오버레이라서 포커스 이벤트가 생기지 않는다.
 
-3450×2224 스크린샷(BMP 약 23MB)을 기준으로 변환과 설정에 약 0.3초가 걸린다.
+포커스가 옮겨와도 **0.8초 동안 유지될 때만** 넘긴다. 워크스페이스 전환처럼 스쳐 가는 포커스마다 넘겼다 되돌리면 X 선택 소유권이 매번 두 번 바뀌기 때문이다. 그보다 빨리 Ctrl+V를 누르면 `kakaotalk-paste`가 같은 모듈로 직접 넘기고, 포커스가 빠질 때 브리지가 똑같이 되돌린다.
+
+3456×2234 스크린샷은 2560×1655(BMP 약 12.7MB)로 줄어 들어가고, 변환과 설정에 약 0.4초가 걸린다.
 
 ## 실패한 방식 (다시 시도하지 말 것)
 
@@ -63,7 +66,7 @@ tools/clipboard-selftest.sh
    PNG restored intact
 ```
 
-10초 안에 `CF_DIB`가 들어오지 않으면 실패로 끝난다. 브리지 로그를 보려면 브리지를 이렇게 띄운다.
+10초 안에 `CF_DIB`가 들어오지 않으면 실패로 끝난다. `kakaotalk-paste`의 로그는 저널에 남는다 (`journalctl --user -t kakaotalk-paste`). 브리지 로그를 보려면 브리지를 이렇게 띄운다.
 
 ```bash
 setsid -f sh -c "exec $HOME/.local/bin/kakaotalk-clipbridge 2>>$XDG_RUNTIME_DIR/kakaotalk-clipbridge.log"

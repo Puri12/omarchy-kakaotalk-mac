@@ -33,7 +33,7 @@ jobs:
               IFS= read -r first_line < "$file" || true
               [[ "$first_line" =~ ^\#!.*python ]] && printf '%s\n' "$file"
             done
-            find wine tools -type f -name '*.py' -print 2>/dev/null || true
+            find bin wine tools -type f -name '*.py' -print 2>/dev/null || true
           )
           if ((${#files[@]})); then
             python3 -m py_compile "${files[@]}"
