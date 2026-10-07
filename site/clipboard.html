@@ -51,6 +51,7 @@
 <li>카톡 창에 포커스가 가면 <code>kakaotalk-clipbridge</code>가 PNG를 BMP로 바꿔 <strong>Wine 안에서 Windows 클립보드(<code>CF_DIB</code>)에 직접</strong> 넣습니다. 큰 이미지가 XWayland를 거치지 않습니다.</li>
 <li>카톡을 보는 중에 찍은 스크린샷도 클립보드 변화를 감시해 처리합니다. 큰 스크린샷은 긴 변 2560px로 줄여 넣습니다.</li>
 <li>카톡에서 포커스가 빠지면 원래 PNG로 되돌려 다른 앱이 큰 BMP를 끌어가지 않게 합니다.</li>
+<li>카톡 안에서 복사한 이미지도 포커스가 빠질 때 PNG로 바꿔 올려, 다른 앱에 바로 붙여넣을 수 있습니다.</li>
 </ul>
 <p>확인(작은 테스트 이미지로 안전하게, 클립보드가 테스트 이미지로 바뀝니다):</p>
 <figure class="code"><figcaption>bash</figcaption><pre tabindex="0"><code>tools/clipboard-selftest.sh   # 종료 코드 0, "PNG restored intact"</code></pre></figure>

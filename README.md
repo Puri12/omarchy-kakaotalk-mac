@@ -37,7 +37,7 @@ bin/kakaotalk_clip.py       브리지와 kakaotalk-paste가 함께 쓰는 이미
 bin/kakaotalk-tray          바의 카톡 아이콘 (StatusNotifierItem) → ~/.local/bin/  (로그인 시 자동 시작)
 bin/kakaotalk-paste         카톡 창의 Ctrl+V: 복사한 파일을 첨부로 넘김 → ~/.local/bin/
 bin/kakaotalk-notify        새 메시지 데스크톱 알림 → ~/.local/bin/  (로그인 시 자동 시작)
-wine/setclip.py             Wine 안에서 BMP를 Windows 클립보드(CF_DIB)에 넣는 도우미 → ~/.local/share/kakaotalk-ec/py/
+wine/setclip.py             Wine 안에서 BMP를 Windows 클립보드(CF_DIB)에 넣고 꺼내는 도우미 → ~/.local/share/kakaotalk-ec/py/
 wine/dropfiles.py           Wine 안에서 채팅방 창에 파일을 끌어다 놓기(WM_DROPFILES)로 넘기는 도우미 → ~/.local/share/kakaotalk-ec/py/
 wine/korean.reg             한국어 UI(0412)와 한글 글꼴 치환 (설치 전에 넣어야 함)
 wine/fontlink.py            한글 폰트 링크 .reg 생성기 (입력창 한글 네모 방지)
@@ -217,7 +217,8 @@ fcitx5의 기본값(`UseOnTheSpot=False`)에서는 X11 앱에서 조합 중인 �
 - 카카오톡 창에 포커스가 있으면(카톡을 보는 중에 찍은 스크린샷 포함), 브리지가 PNG를 BMP로 바꾸고 **Wine 안에서 Windows 클립보드(`CF_DIB`)에 직접 넣는다.** 긴 변이 2560px를 넘으면 줄여서 넣는다. 3456×2234 스크린샷 기준 약 0.4초 걸린다.
 - 포커스가 0.8초 유지될 때만 넘긴다. 그보다 빨리 누른 Ctrl+V는 `kakaotalk-paste`가 같은 방식으로 직접 넘긴다.
 - 카톡은 Wine 안에서 바로 읽으므로 큰 데이터가 XWayland를 거치지 않는다.
-- Hyprland가 Wine 클립보드를 Wayland 쪽에 `image/bmp`로 복사해 오므로, **카톡에서 벗어나면 원래 PNG로 즉시 되돌린다.** 카톡 안에서 텍스트나 다른 이미지를 복사했다면 되돌리지 않는다.
+- Hyprland가 Wine 클립보드를 Wayland 쪽에 `image/bmp`로 복사해 오므로, **카톡에서 벗어나면 원래 PNG로 즉시 되돌린다.** 카톡 안에서 텍스트를 복사했다면 그대로 둔다.
+- **카톡 안에서 복사한 이미지**는 Wine이 `image/bmp`로만 내놓는다. 포커스가 빠질 때 Wine 안에서 꺼내 PNG로 바꿔 올리므로, 다른 앱에 바로 붙여넣을 수 있고 이때도 큰 데이터가 XWayland를 거치지 않는다.
 
 자세한 내용은 [docs/clipboard-paste.md](docs/clipboard-paste.md)에 있다. 동작 확인은 `tools/clipboard-selftest.sh`로 한다.
 

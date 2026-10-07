@@ -3,9 +3,10 @@
 set_windows_clipboard() converts the PNG to BMP and puts it on the Windows clipboard as CF_DIB from
 inside the Wine prefix (setclip.py). Wine then mirrors it onto the X clipboard as image/bmp, which
 must not stay there: a Wayland app pulling megabytes through XWayland breaks Hyprland's XWM. So the
-PNG and the CF_DIB size are remembered in CLIP_DIR, and restore_png() puts the PNG back once focus
-leaves KakaoTalk - unless the Windows clipboard no longer holds that bitmap, i.e. something else
-was copied inside KakaoTalk since.
+PNG and the CF_DIB size are remembered in CLIP_DIR, and take_back() puts the PNG back once focus
+leaves KakaoTalk. If the Windows clipboard holds another bitmap by then (an image copied inside
+KakaoTalk), that one is read out inside Wine and published as PNG instead, so Wayland apps can
+paste it and it never crosses XWayland either.
 """
 import os
 import re
@@ -22,9 +23,9 @@ MAX_EDGE = 2560
 ERRORS = (subprocess.CalledProcessError, subprocess.TimeoutExpired)
 
 
-def _setclip(arg):
+def _setclip(*args):
     """Run setclip.py inside Wine; returns the CF_DIB size in bytes it reports."""
-    cmd = [KAKAOTALK, "wine", f"Z:{PY_DIR}/python.exe", f"Z:{PY_DIR}/setclip.py", arg]
+    cmd = [KAKAOTALK, "wine", f"Z:{PY_DIR}/python.exe", f"Z:{PY_DIR}/setclip.py", *args]
     out = subprocess.run(cmd, check=True, timeout=60, capture_output=True, text=True).stdout
     match = re.search(r"(\d+) bytes", out)
     if not match:
@@ -33,7 +34,7 @@ def _setclip(arg):
 
 
 def set_windows_clipboard(png):
-    """Put the PNG on the Windows clipboard and remember it for restore_png(). Returns the CF_DIB size."""
+    """Put the PNG on the Windows clipboard and remember it for take_back(). Returns the CF_DIB size."""
     os.makedirs(CLIP_DIR, exist_ok=True)
     bmp = os.path.join(CLIP_DIR, f"clip-{os.getpid()}.bmp")
     shrink = ["-resize", f"{MAX_EDGE}x{MAX_EDGE}>"] if MAX_EDGE else []
@@ -51,34 +52,57 @@ def set_windows_clipboard(png):
     return size
 
 
-def handed_over():
-    return os.path.exists(SAVED_SIZE)
-
-
-def restore_png(types):
-    """Put the remembered PNG back on the Wayland clipboard, whose current types are given.
-
-    Returns what happened, or None if nothing had been handed over.
-    """
+def _pop_handed_over():
+    """The remembered (png, CF_DIB size), forgotten from now on; None if nothing was handed over."""
     try:
         with open(SAVED_PNG, "rb") as f:
             png = f.read()
         with open(SAVED_SIZE) as f:
-            size = int(f.read())
+            return png, int(f.read())
     except (FileNotFoundError, ValueError):
         return None
     finally:
         for path in (SAVED_PNG, SAVED_SIZE):
             if os.path.exists(path):
                 os.unlink(path)
-    if "image/bmp" not in types or any(t in types for t in TEXT_TYPES):
-        return "the bitmap is not on the Wayland clipboard, nothing to restore"
+
+
+def _copied_in_kakaotalk():
+    """The bitmap on the Windows clipboard as PNG, read inside Wine. Returns (png, CF_DIB size)."""
+    bmp = os.path.join(CLIP_DIR, f"copied-{os.getpid()}.bmp")
+    os.makedirs(CLIP_DIR, exist_ok=True)
     try:
-        current = _setclip("--check")
-    except ERRORS:
-        current = size  # cannot tell: do not leave the large bitmap on the X clipboard
-    if current != size:
-        return f"another image was copied in KakaoTalk ({current} bytes, handed over {size}), PNG not restored"
+        size = _setclip("--dump", f"Z:{bmp}")
+        # Windows apps leave the alpha byte of 32-bit DIBs at 0: it is not transparency.
+        png = subprocess.run(["magick", f"bmp:{bmp}", "-alpha", "off", "png:-"],
+                             check=True, timeout=30, capture_output=True).stdout
+    finally:
+        if os.path.exists(bmp):
+            os.unlink(bmp)
+    return png, size
+
+
+def take_back(types):
+    """After focus left KakaoTalk: replace Wine's bitmap on the Wayland clipboard (current types given) by a PNG.
+
+    Returns what happened, or None if there was nothing to do.
+    """
+    handed_over = _pop_handed_over()
+    # Wine offers its bitmap as image/bmp without image/png. A clipboard that already has a PNG
+    # (a Wayland app offering both) needs nothing, and reading it via Wine would cross XWayland.
+    if "image/bmp" not in types or "image/png" in types or any(t in types for t in TEXT_TYPES):
+        return "the bitmap is not on the Wayland clipboard, nothing to restore" if handed_over else None
+    png = None
+    if handed_over:
+        try:
+            current = _setclip("--check")
+        except ERRORS:
+            current = handed_over[1]  # cannot tell: do not leave the large bitmap on the X clipboard
+        if current == handed_over[1]:
+            png, what = handed_over[0], "PNG restored"
+    if png is None:
+        png, size = _copied_in_kakaotalk()
+        what = f"image copied in KakaoTalk ({size} bytes DIB) published as PNG ({len(png)} bytes)"
     subprocess.run(["wl-copy", "--type", "image/png"], input=png, check=True, timeout=10,
                    stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
-    return "PNG restored"
+    return what

@@ -22,7 +22,8 @@ Omarchy에서 찍은 스크린샷을 카카오톡 채팅창에 **Ctrl+V로 이�
 1. PNG를 BMP로 변환한다 (ImageMagick, 알파는 흰 배경에 합성). 긴 변이 2560px를 넘으면 줄인다 (`kakaotalk_clip.py`의 `MAX_EDGE`, 0이면 제한 없음).
 2. **Wine prefix 안에서** Windows ARM64 Python으로 `setclip.py`를 실행해 Windows 클립보드에 `CF_DIB`를 직접 넣는다.
 3. 카카오톡은 Ctrl+V를 누를 때 같은 Wine 안(wineserver)에서 이미지를 읽는다. **큰 데이터가 XWayland를 지나가지 않는다.**
-4. Hyprland는 Wine 클립보드를 Wayland 쪽에 `image/bmp` 등으로 복사해 온다. 그래서 **카카오톡에서 포커스가 빠지면 원래 PNG를 다시 올린다.** 다른 Wayland 앱이 큰 BMP를 XWayland를 통해 끌어가지 않게 하기 위해서다. 카톡 안에서 새로 텍스트나 다른 이미지를 복사했다면 되돌리지 않는다. 다른 이미지인지는 Windows 클립보드의 `CF_DIB` 크기가 넣었던 것과 같은지로 구분한다 (`setclip.py --check`).
+4. Hyprland는 Wine 클립보드를 Wayland 쪽에 `image/bmp` 등으로 복사해 온다. 그래서 **카카오톡에서 포커스가 빠지면 원래 PNG를 다시 올린다.** 다른 Wayland 앱이 큰 BMP를 XWayland를 통해 끌어가지 않게 하기 위해서다. 카톡 안에서 새로 텍스트를 복사했다면 되돌리지 않는다.
+5. **카톡 안에서 이미지를 복사했다면** (Windows 클립보드의 `CF_DIB` 크기가 넣었던 것과 다르거나, 넣은 적이 없는데 `image/bmp`만 있는 경우) 포커스가 빠질 때 그 비트맵을 Wine 안에서 파일로 꺼내 (`setclip.py --dump`) PNG로 바꿔 Wayland 클립보드에 올린다. Wine은 이미지를 `image/bmp`로만 내놓아서, 그대로 두면 다른 앱이 붙여넣을 때 큰 비트맵이 XWayland를 지나가야 한다. 클립보드에 이미 `image/png`가 있으면 건드리지 않는다.
 
 이벤트는 두 곳에서 받는다.
 
@@ -78,4 +79,4 @@ setsid -f sh -c "exec $HOME/.local/bin/kakaotalk-clipbridge 2>>$XDG_RUNTIME_DIR/
 |---|---|
 | 붙여넣어도 아무것도 안 됨 | 브리지가 떠 있는지 확인한다. 없으면 `setsid -f uwsm-app -- ~/.local/bin/kakaotalk-clipbridge` |
 | X11 창(카톡 등)이 전부 사라짐 | xwm 고장. `omarchy system logout` 후 다시 로그인한다 |
-| 다른 앱에 붙여넣은 이미지가 BMP로 들어감 | 카톡에서 포커스를 옮기면 PNG로 되돌아간다. 카톡이 포커스된 상태에서 다른 앱에 붙여넣으면 안 된다 |
+| 다른 앱에 붙여넣은 이미지가 BMP로 들어감 | 카톡에서 포커스를 옮기면 PNG로 바뀐다 (넘긴 스크린샷은 원본으로, 카톡에서 복사한 이미지는 변환해서). 카톡이 포커스된 상태에서 다른 앱에 붙여넣으면 안 된다 |

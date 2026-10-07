@@ -7,7 +7,8 @@ relogin. So while a KakaoTalk window is focused, a PNG-only clipboard is convert
 put on the *Windows* clipboard from inside the Wine prefix (kakaotalk_clip.py), where KakaoTalk
 reads it without any X transfer. Hyprland mirrors Wine's clipboard back to Wayland as image/bmp,
 so the original PNG is restored as soon as focus leaves KakaoTalk, before a Wayland app can pull
-the large bitmap through XWayland.
+the large bitmap through XWayland. An image copied inside KakaoTalk is published as PNG the same
+way when focus leaves.
 """
 import os
 import select
@@ -16,7 +17,8 @@ import subprocess
 import sys
 import time
 
-from kakaotalk_clip import ERRORS, handed_over, restore_png, set_windows_clipboard
+import kakaotalk_clip
+from kakaotalk_clip import ERRORS, set_windows_clipboard
 
 KAKAO_CLASS = "kakaotalk.exe"
 # Focus that only passes over KakaoTalk (workspace switches, the pointer crossing its window) must
@@ -57,12 +59,10 @@ def hand_over():
 
 
 def take_back():
-    if not handed_over():
-        return
     try:
-        result = restore_png(types())
+        result = kakaotalk_clip.take_back(types())
     except ERRORS as exc:
-        result = f"restoring the PNG failed: {exc}"
+        result = f"taking the clipboard back failed: {exc}"
     if result:
         log(f"KakaoTalk unfocused: {result}")
 
@@ -81,7 +81,10 @@ def main():
     sock_path = os.path.join(os.environ["XDG_RUNTIME_DIR"], "hypr",
                              os.environ["HYPRLAND_INSTANCE_SIGNATURE"], ".socket2.sock")
     sock = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
-    sock.connect(sock_path)
+    try:
+        sock.connect(sock_path)
+    except OSError as exc:
+        raise SystemExit(f"cannot reach Hyprland's event socket {sock_path}: {exc}") from None
     # Screenshots taken while KakaoTalk is focused change the clipboard without any focus
     # event (the region picker is a layer surface), so watch the clipboard as well.
     watch = subprocess.Popen(["wl-paste", "--watch", "echo", "changed"], stdout=subprocess.PIPE)

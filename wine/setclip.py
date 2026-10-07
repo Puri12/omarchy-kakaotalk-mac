@@ -2,11 +2,13 @@
 
   python setclip.py <file.bmp>   set the clipboard
   python setclip.py --check      print the CF_DIB size currently on the clipboard
+  python setclip.py --dump <file.bmp>   write the clipboard's CF_DIB to a BMP file
 
 Setting the image inside Wine means KakaoTalk reads it from wineserver directly instead
 of pulling megabytes through Hyprland's XWayland clipboard bridge, which hangs.
 """
 import ctypes
+import struct
 import sys
 import time
 from ctypes import wintypes
@@ -66,5 +68,35 @@ def check():
         u32.CloseClipboard()
 
 
+def dump(path):
+    open_clipboard()
+    try:
+        handle = u32.GetClipboardData(CF_DIB)
+        if not handle:
+            raise SystemExit("no CF_DIB on the clipboard")
+        ptr = k32.GlobalLock(handle)
+        try:
+            dib = ctypes.string_at(ptr, k32.GlobalSize(handle))
+        finally:
+            k32.GlobalUnlock(handle)
+    finally:
+        u32.CloseClipboard()
+    # BITMAPFILEHEADER.bfOffBits: the pixels follow the info header, its colour masks and palette.
+    header_size, = struct.unpack_from("<I", dib, 0)
+    bit_count, compression = struct.unpack_from("<HI", dib, 14)
+    colours_used, = struct.unpack_from("<I", dib, 32)
+    masks = {3: 12, 6: 16}.get(compression, 0) if header_size == 40 else 0
+    palette = 4 * (colours_used or (1 << bit_count if bit_count <= 8 else 0))
+    offset = 14 + header_size + masks + palette
+    with open(path, "wb") as f:
+        f.write(b"BM" + struct.pack("<IHHI", 14 + len(dib), 0, 0, offset) + dib)
+    print(f"CF_DIB dumped: {len(dib)} bytes")
+
+
 if __name__ == "__main__":
-    check() if sys.argv[1:] == ["--check"] else set_dib(sys.argv[1])
+    if sys.argv[1:] == ["--check"]:
+        check()
+    elif sys.argv[1:2] == ["--dump"]:
+        dump(sys.argv[2])
+    else:
+        set_dib(sys.argv[1])
