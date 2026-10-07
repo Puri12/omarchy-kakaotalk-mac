@@ -7,6 +7,12 @@ focused (~/.config/hypr/hyprland.lua). If the clipboard holds local files (text/
 dropped onto the chat window Hyprland has focused, matched by title and geometry from
 `hyprctl activewindow` (dropfiles.py inside the Wine prefix); otherwise, or if no single window
 matches or takes the drop, the real Ctrl+V is passed on, so text and images paste as before.
+
+kakaotalk-clipbridge puts a PNG-only clipboard on the Windows clipboard when KakaoTalk gains focus,
+but Wine's own import of the X selection (which Hyprland sets at the same moment) can overwrite it
+with an empty clipboard. So if the clipboard is still PNG-only here (the bridge's image never made
+it to Wine, or Wine would have mirrored it back as image/bmp), it is put on the Windows clipboard
+again right before the Ctrl+V, when nothing else races it.
 """
 import json
 import os
@@ -17,6 +23,7 @@ from urllib.parse import unquote, urlsplit
 
 KAKAOTALK = os.path.expanduser("~/.local/bin/kakaotalk")
 PY_DIR = os.path.expanduser("~/.local/share/kakaotalk-ec/py")
+CLIP_DIR = os.path.join(os.environ.get("XDG_RUNTIME_DIR", "/tmp"), "kakaotalk-clip")
 
 
 def log(msg):
@@ -40,6 +47,24 @@ def local_files():
             return None
         paths.append(unquote(parts.path))
     return paths if paths and all(os.path.isfile(p) for p in paths) else None
+
+
+def put_png_on_windows_clipboard():
+    """Same conversion as kakaotalk-clipbridge: PNG -> BMP -> CF_DIB via setclip.py in Wine."""
+    png = paste("--no-newline", "--type", "image/png")
+    if not png:
+        return
+    os.makedirs(CLIP_DIR, exist_ok=True)
+    bmp = os.path.join(CLIP_DIR, "clip.bmp")
+    try:
+        subprocess.run(["magick", "png:-", "-background", "white", "-alpha", "remove", "-alpha", "off",
+                        f"bmp3:{bmp}"], input=png, check=True, timeout=30, capture_output=True)
+        subprocess.run([KAKAOTALK, "wine", f"Z:{PY_DIR}/python.exe", f"Z:{PY_DIR}/setclip.py", f"Z:{bmp}"],
+                       check=True, timeout=60, capture_output=True)
+    except (subprocess.CalledProcessError, subprocess.TimeoutExpired) as exc:
+        log(f"setting the Windows clipboard failed: {exc}")
+        return
+    log(f"image ({len(png)} bytes PNG) put on the Windows clipboard before Ctrl+V")
 
 
 def send_ctrl_v():
@@ -82,6 +107,8 @@ def main():
             return
         if result.returncode != 3:
             log(f"drop failed ({result.returncode}): {result.stderr.strip()[-300:]}")
+    elif not paths and paste("--list-types").decode(errors="replace").split() == ["image/png"]:
+        put_png_on_windows_clipboard()
     send_ctrl_v()
 
 
